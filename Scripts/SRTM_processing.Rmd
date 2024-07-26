@@ -1,0 +1,61 @@
+---
+title: "SRTM_processing"
+author: "Carrie Hashimoto"
+date: "2024-07-24"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Import elevation data and mosaic them as well; save the elevation tif.
+```{r}
+library(terra)
+library(ggplot2)
+library(tidyterra)
+
+wd <- rprojroot::find_rstudio_root_file()
+outDir <- file.path(wd, "Data", fsep="/")
+suppressWarnings(dir.create(outDir)) 
+
+all_files <- list.files(paste0(wd,"/Data/SRTM_data"))
+hgts <- all_files[grepl("hgt",all_files)]
+
+elevs <- list()
+
+for (i in 1:length(hgts)) {
+  elevs[[i]] <- terra::rast(paste0(wd,"/Data/SRTM_data/",hgts[i]))
+}
+
+elevs <- terra::mosaic(terra::sprc(elevs))
+plot(elevs)
+
+# looks like crs is already OK
+crs(elevs) <- crs(terra::rast(wd,"/openET_data/tiffs/full_mosaic.tif"))
+names(elevs) <- "elevation"
+
+terra::writeRaster(elevs,paste0(wd,"/Data/SRTM_data/SRTM_mosaic.tif"),overwrite=TRUE)
+
+terra::global(elevs, fun="isNA") # No NAs, a little weird
+```
+Import precipitation data.
+```{r}
+precipitation <- terra::rast("~/Desktop/SARP/Data/TERRACLIMATE_pr_2020-03-01_2020-08-31_36p8990to37p7370N_-119p5980to-118p8290E.pr.tif")
+
+
+ggplot() +
+  geom_spatraster(data=precipitation)
+
+terra::global(precipitation, fun="isNA") # No NAs
+names(precip) <- "precipitation"
+
+temperature <- terra::rast("~/Desktop/SARP/Data/TERRACLIMATE_soil_2020-03-01_2020-08-31_36p8990to37p7370N_-119p5980to-118p8290E.soil.tif")
+
+
+ggplot() +
+  geom_spatraster(data=temperature)
+
+terra::global(temperature, fun="isNA") # No NAs
+names(temperature) <- "temperature"
+```
+
+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

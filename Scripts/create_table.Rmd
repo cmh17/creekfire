@@ -1,0 +1,225 @@
+---
+title: "create_table"
+author: "Carrie Hashimoto"
+date: "2024-07-24"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Setup:
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(comment = NA)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+```{r, warning = FALSE, message = FALSE}
+packages <- c('terra','ggplot2','DT', 'rprojroot',
+              'tidyterra','dplyr',"data.table")
+
+# Identify missing (not installed) packages
+new.packages = packages[!(packages %in% installed.packages()[,"Package"])]
+
+# Install new (not installed) packages
+if(length(new.packages)) install.packages(new.packages, repos='http://cran.rstudio.com/') else print('All required packages are installed.')
+
+invisible(lapply(packages, library, character.only = TRUE))
+```
+
+```{r}
+wd <- rprojroot::find_rstudio_root_file()
+outDir <- file.path(wd, "Data", fsep="/")
+suppressWarnings(dir.create(outDir)) 
+```
+
+## Import all the rasters:
+
+temp -  NLDAS hourly mean over 2020-03-04 to 2020-09-04 
+- Could use ECOSTRESS - revisit if time
+precip - TerraClimate monthly total 2020-03-01 to 2020-09-01
+soil moisture - TerraClimate monthly total 2020-03-01 to 2020-09-01
+
+Prefire NDVI - HLS mean 2020-06-01 to 2020-08-30
+Prefire NBR - HLS mean 2020-06-01 to 2020-08-30
+Prefire ET - OpenET monthly total 2020-06, 2021-07, 2021-08
+
+Postfire NDVI - HLS mean 2021-06-01 to 2021-08-30
+Postfire NBR - HLS mean 2021-06-01 to 2021-08-30
+Postfire ET - OpenET monthly total 2021-06, 2021-07, 2021-08
+
+```{r}
+# boundary vec
+boundary_vec <- terra::vect(paste0(wd,"/Data/creekfire_1km_buffer.geojson"))
+
+# Import the actual fire boundary
+creekfire_geojson <- terra::vect(paste0(wd,"/Data/creekfire.geojson"))
+
+# ET data
+prefire_et <- terra::rast(paste0(wd,"/Data/openET_data/tiffs/prefire_mean_ET.tif"))
+names(prefire_et) <- "prefire_et"
+
+postfire_et <- terra::rast(paste0(wd,"/Data/openET_data/tiffs/postfire_mean_ET.tif"))
+names(postfire_et) <- "postfire_et"
+
+elevation <- terra::rast(paste0(wd,"/Data/SRTM_data/SRTM_mosaic.tif"))
+names(elevation) <- "elevation"
+
+temperature <- terra::rast(paste0(wd,"/Data/NLDAS2_DAILY_tasmean_2020-03-04_2020-09-04_36p8990to37p7370N_-119p5980to-118p8290E.tasmean.tif"))
+names(temperature) <- "temperature"
+
+precipitation <- terra::rast(paste0(wd,"/Data/TERRACLIMATE_pr_2020-03-01_2020-08-31_36p8990to37p7370N_-119p5980to-118p8290E.pr.tif"))
+names(precipitation) <- "precipitation"
+
+soil_moisture <- terra::rast(paste0(wd,"/Data/TERRACLIMATE_soil_2020-03-01_2020-08-31_36p8990to37p7370N_-119p5980to-118p8290E.soil.tif"))
+names(soil_moisture) <- "soil_moisture"
+
+slope <- terra::rast(paste0(wd,"/Data/SRTM_data/srtm_slope.tif"))
+names(slope) <- "slope"
+
+aspect <- terra::rast(paste0(wd,"/Data/SRTM_data/srtm_aspect.tif"))
+names(aspect) <- "aspect"
+
+dndvi <- terra::rast(paste0(wd,"/Data/HLS_data/diff_mean_ndvi.tif"))
+names(dndvi) <- "dndvi"
+
+dnbr <- terra::rast(paste0(wd,"/Data/HLS_data/diff_mean_nbr.tif"))
+names(dnbr) <- "dnbr"
+
+rasterized_boundary <- terra::rasterize(creekfire_geojson, prefire_et, field=1, background=NA)
+names(rasterized_boundary) <- "burned"
+plot(rasterized_boundary)
+
+
+
+# Elevation data - https://search.earthdata.nasa.gov/search/granules/collection-details?p=C2763266360-LPCLOUD!C2763266360-LPCLOUD&pg[1][v]=t&pg[1][gsk]=-start_date&pg[1][m]=download&pg[1][cd]=f&q=srtm&sb[0]=-120.31348%2C35.64266%2C-117.6416%2C38.29532&tl=1721650273!3!!&lat=36.72934533158263&long=-123.22265625000001&zoom=6
+
+postfire_et_resampled <- terra::resample(postfire_et,prefire_et)
+elevation_resampled <- terra::resample(elevation,prefire_et)
+temperature_resampled <- terra::resample(temperature,prefire_et)
+precipitation_resampled <- terra::resample(precipitation,prefire_et)
+soil_moisture_resampled <- terra::resample(soil_moisture,prefire_et)
+slope_resampled <- terra::resample(slope,prefire_et)
+aspect_resampled <- terra::resample(aspect,prefire_et)
+dndvi_resampled <- terra::resample(dndvi,prefire_et)
+dnbr_resampled <- terra::resample(dnbr,prefire_et)
+
+# plot(slope_resampled)
+# 
+# terra::writeRaster(postfire_et,paste0(wd,"/Data/SRTM_data/SRTM_mosaic_resampled.tif"),
+#                    overwrite=TRUE)
+# terra::writeRaster(temperature_resampled,paste0(wd,"/Data/NLDAS2_DAILY_tasmean_2020-03-04_2020-09-04_resampled.tif"),
+#                    overwrite=TRUE)
+# terra::writeRaster(temperature,paste0(wd,"/Data/NLDAS2_DAILY_tasmean_2020-03-04_2020-09-04_resampled.tif"),
+#                    overwrite=TRUE)
+# terra::writeRaster(precipitation_resampled,paste0(wd,"/Data/TERRACLIMATE_pr_2020-03-01_2020-08-31_resampled.tif"),
+#                    overwrite=TRUE)
+# terra::writeRaster(soil_moisture_resampled,paste0(wd,"/Data/TERRACLIMATE_soil_2020-03-01_2020-08-31_resampled.tif"),
+#                    overwrite=TRUE)
+# terra::writeRaster(postfire_et_resampled,paste0(wd,"/Data/openET_data/tiffs/postfire_mean_ET_resampled.tif"),
+#                    overwrite=TRUE)
+# terra::writeRaster(postfire_et_resampled,paste0(wd,"/Data/openET_data/tiffs/rasterized_creekfire_geojson.tif"),
+#                    overwrite=TRUE)
+# terra::writeRaster(slope_resampled,paste0(wd,"/Data/SRTM_data/SRTM_slope_resampled.tif"),
+#                    overwrite=TRUE)
+# terra::writeRaster(aspect_resampled,paste0(wd,"/Data/SRTM_data/SRTM_aspect_resampled.tif"),
+#                    overwrite=TRUE)
+# 
+# # diff mean NDVI
+# diff_mean_ndvi <- terra::rast(paste0(wd,"/Data/HLS_data/diff_mean_ndvi.tif"))
+# 
+# # diff mean NBR
+# diff_mean_nbr <- terra::rast(paste0(wd,"/Data/HLS_data/diff_mean_nbr.tif"))
+# 
+# # NDVI and NBR should already be resampled... I hope
+```
+
+
+
+Trim everything to the buffer extent.
+```{r}
+
+
+prefire_et_cropped <- terra::crop(prefire_et,boundary_vec,mask=TRUE)
+postfire_et_resampled_cropped <- terra::crop(postfire_et_resampled,boundary_vec,mask=TRUE)
+
+elevation_resampled_cropped <- terra::crop(elevation_resampled,boundary_vec,mask=TRUE)
+temperature_resampled_cropped <- terra::crop(temperature_resampled,boundary_vec,mask=TRUE)
+precipitation_resampled_cropped <- terra::crop(precipitation_resampled,boundary_vec,mask=TRUE)
+soil_moisture_resampled_cropped <- terra::crop(soil_moisture_resampled,boundary_vec,mask=TRUE)
+dndvi_resampled_cropped <- terra::crop(dndvi_resampled,boundary_vec,mask=TRUE)
+dnbr_resampled_cropped <- terra::crop(dnbr_resampled,boundary_vec,mask=TRUE)
+slope_resampled_cropped <- terra::crop(slope_resampled,boundary_vec,mask=TRUE)
+aspect_resampled_cropped <- terra::crop(aspect_resampled,boundary_vec,mask=TRUE)
+rasterized_boundary_cropped <- terra::crop(rasterized_boundary,boundary_vec,mask=TRUE)
+
+```
+
+
+Create a data table with all these data in it.
+```{r}
+# Extract values from other rasters
+coords <- terra::crds(prefire_et_cropped)
+colnames(coords) <- c("x","y")
+prefire_et_values <- terra::extract(prefire_et_cropped, coords)
+postfire_et_values <- terra::extract(postfire_et_resampled_cropped, coords)
+temperature_values <- terra::extract(temperature_resampled_cropped, coords)
+precipitation_values <- terra::extract(precipitation_resampled_cropped, coords)
+elevation_values <- terra::extract(elevation_resampled_cropped, coords)
+soil_moisture_values <- terra::extract(soil_moisture_resampled_cropped, coords)
+dndvi_values <- terra::extract(dndvi_resampled_cropped, coords)
+dnbr_values <- terra::extract(dnbr_resampled_cropped, coords)
+aspect_values <- terra::extract(aspect_resampled_cropped, coords)
+slope_values <- terra::extract(slope_resampled, coords)
+rasterized_boundary_values <- terra::extract(rasterized_boundary_cropped, coords)
+
+# Check if each point is within the boundary
+# boundary_check <- function(lat, lon, boundary_vec) {
+#   # Create a SpatVector from the coordinates
+#   points <- vect(data.frame(x = lon, y = lat), geom = c("x", "y"), crs = crs(boundary_vec))
+#   
+#   # Perform intersection to check if points fall within the boundary
+#   in_boundary <- !is.na(terra::intersect(points, boundary_vec))
+#   
+#   return(in_boundary)
+# }
+
+
+
+# Create the data.table
+data_table <- data.table(
+  lat = coords[, "y"],
+  lon = coords[, "x"],
+  within_boundary = rasterized_boundary_values[,"burned"],
+  dNDVI = dndvi_values[, "dndvi"],
+  dNBR = dnbr_values[, "dnbr"],  
+  prefire_ET = prefire_et_values[, "prefire_et"],              
+  postfire_ET = postfire_et_values[, "postfire_et"],
+  temp = temperature_values[, "temperature"],    
+  precip = precipitation_values[, "precipitation"], 
+  elev = elevation_values[, "elevation"],    
+  aspect = aspect_values[,"aspect"], 
+  slope = slope_values[,"slope"],  
+  soil_moisture = soil_moisture_values[, "soil_moisture"] 
+)
+
+data_outside_buffer <- data_table[data_table$within_boundary==0]
+head(data_outside_buffer,20)
+
+ggplot(data_table[1:1000000,], aes(lon,lat)) +
+  geom_tile(aes(fill = dNDVI))
+
+
+# Save or inspect the data.table
+write.csv(data_table, "Data/big_table.csv", row.names = FALSE)
+
+
+
+```
+
+
+
+
+
+
