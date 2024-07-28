@@ -53,6 +53,9 @@ Postfire ET - OpenET monthly total 2021-06, 2021-07, 2021-08
 # boundary vec
 boundary_vec <- terra::vect(paste0(wd,"/Data/creekfire_1km_buffer.geojson"))
 
+# HUC12 in 10 km buffer
+HUC12 <- terra::vect((paste0(wd,"/Data/CreekFireHUC12_in_buffer.geojson")))
+
 # Import the actual fire boundary
 creekfire_geojson <- terra::vect(paste0(wd,"/Data/creekfire.geojson"))
 
@@ -91,7 +94,9 @@ rasterized_boundary <- terra::rasterize(creekfire_geojson, prefire_et, field=1, 
 names(rasterized_boundary) <- "burned"
 plot(rasterized_boundary)
 
-
+rasterized_HUC12 <- terra::rasterize(HUC12, prefire_et, field="HUC12", background=NA)
+names(rasterized_HUC12) <- "HUC12"
+plot(rasterized_HUC12)
 
 # Elevation data - https://search.earthdata.nasa.gov/search/granules/collection-details?p=C2763266360-LPCLOUD!C2763266360-LPCLOUD&pg[1][v]=t&pg[1][gsk]=-start_date&pg[1][m]=download&pg[1][cd]=f&q=srtm&sb[0]=-120.31348%2C35.64266%2C-117.6416%2C38.29532&tl=1721650273!3!!&lat=36.72934533158263&long=-123.22265625000001&zoom=6
 
@@ -139,8 +144,6 @@ dnbr_resampled <- terra::resample(dnbr,prefire_et)
 
 Trim everything to the buffer extent.
 ```{r}
-
-
 prefire_et_cropped <- terra::crop(prefire_et,boundary_vec,mask=TRUE)
 postfire_et_resampled_cropped <- terra::crop(postfire_et_resampled,boundary_vec,mask=TRUE)
 
@@ -153,6 +156,7 @@ dnbr_resampled_cropped <- terra::crop(dnbr_resampled,boundary_vec,mask=TRUE)
 slope_resampled_cropped <- terra::crop(slope_resampled,boundary_vec,mask=TRUE)
 aspect_resampled_cropped <- terra::crop(aspect_resampled,boundary_vec,mask=TRUE)
 rasterized_boundary_cropped <- terra::crop(rasterized_boundary,boundary_vec,mask=TRUE)
+rasterized_HUC12_cropped <- terra::crop(rasterized_HUC12,boundary_vec,mask=TRUE)
 
 ```
 
@@ -173,6 +177,7 @@ dnbr_values <- terra::extract(dnbr_resampled_cropped, coords)
 aspect_values <- terra::extract(aspect_resampled_cropped, coords)
 slope_values <- terra::extract(slope_resampled, coords)
 rasterized_boundary_values <- terra::extract(rasterized_boundary_cropped, coords)
+rasterized_HUC12_values <- terra::extract(rasterized_HUC12_cropped, coords)
 
 # Check if each point is within the boundary
 # boundary_check <- function(lat, lon, boundary_vec) {
@@ -192,6 +197,7 @@ data_table <- data.table(
   lat = coords[, "y"],
   lon = coords[, "x"],
   within_boundary = rasterized_boundary_values[,"burned"],
+  HUC12 = rasterized_HUC12_values[,"HUC12"],
   dNDVI = dndvi_values[, "dndvi"],
   dNBR = dnbr_values[, "dnbr"],  
   prefire_ET = prefire_et_values[, "prefire_et"],              
@@ -203,12 +209,6 @@ data_table <- data.table(
   slope = slope_values[,"slope"],  
   soil_moisture = soil_moisture_values[, "soil_moisture"] 
 )
-
-data_outside_buffer <- data_table[data_table$within_boundary==0]
-head(data_outside_buffer,20)
-
-ggplot(data_table[1:1000000,], aes(lon,lat)) +
-  geom_tile(aes(fill = dNDVI))
 
 
 # Save or inspect the data.table

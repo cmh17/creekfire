@@ -1,0 +1,119 @@
+---
+title: "SARP_presentation_notes"
+author: "Carrie Hashimoto"
+format: html
+pdf-engine: xelatex
+---
+
+## Describing Evapotranspiration Reduction Following the Creek Fire
+
+
+# The Creek Fire
+
+-   2020-09-04 through 2020-12-24
+
+-   380,000 acres burned \[x\]
+
+## Data: OpenET, HLS, SRTM, NLDAS, TerraClimate
+
+-   Aggregate of 6 other models (what does this entail)
+
+-   What data go in?
+
+-   30 m resolution vs XX for flux towers or XX for satellite observations
+
+## Model: GAM
+
+-   Builds on a multiple linear regression, which is just
+
+$$
+y_i = \beta_0 + \beta_1 x_{i1} + \beta_2 + x_{i2} + \cdots + \beta_p x_{ip} + \epsilon_i
+$$
+
+-   With a GAM, replace the linear functions of $x_i$ with smooth nonlinear functions like natural or smoothing splines
+
+$$
+y_i = \beta_0 + f_1(x_{i1}) + f_2(x_{i2}) + \cdots + f_p(x_{ip}) + \epsilon_i
+$$
+
+-   Not much difference between using natural and smoothing splines, but natural are a bit easier to fit
+
+- I should probably start with a MLR model just to see what the general relationships look like
+
+- Backfitting is needed to fit smoothing splines since you can't use LS with them
+
+Possible components to use:
+
+- MLR is useful but limited because sometimes linear approximations are bad
+
+Alternatives to MLR:
+These all simplify the linear model and reduce variance, but it's still a linear model
+- Ridge regression
+- Lasso
+- PCA
+
+Non-linear extensions of regression
+
+- Polynomial
+
+- Step function - cut range into K regions
+
+- Regression splines - more flexible than polynomials and step functions, extending both of them; polynomials are fit to each region, but constrained so that they join smoothly at region boundaries
+
+- Smoothing splines - similar to regression splines, but minimize residual SS while maintaining smoothness penalty
+
+- Local regression - similar to splines
+
+- GAMs combine these mthods for multiple predictors
+
+## Model Selection
+https://rdrr.io/cran/mgcv/man/gam.selection.html
+- mgcv package used
+
+- Prediction error for gam() uses *Generalized Approximate Cross Validation*; scale parameter is either unknown or an *Un-Biased Risk Estimator*
+
+- A UBRE is scaled AIC for a generalized case or Cp for the additive model case
+
+**review any Chi material**
+
+### Automatic term selection
+
+- Most smoothing penalties consider some functions to be "completely smooth" and start ignorning terms once they're penalized enough to be in this space
+
+- Can change selection so that once penalized to a sufficient extent, they are removed:
+
+-- add another shrinkage term; use smooth classes cs.smooth and tprs.smooth that contain a shrinkage component so that automatic smoothing parameter selection "effectively" removes the terms
+
+-- another alternative: keep the original smoothing penalty, but add another one for every function that only penalizes functions that are inside the null space of the original penalty
+
+## Interactive term selection
+
+- Compare GCV/UBRE/ML scores for models with and without a term in order to decide whether to include it
+
+-- achieve same result with UBRE as you would with AIC
+
+- **restricted maximum likelihood** what is this? cannot use it to compare models with different fixed effects structures
+
+- When would the scale parameter be known? If there were some kind of theoretical background?
+
+### GAM background
+https://hastie.su.domains/Papers/ESLII.pdf
+
+- recall logistic GAMs: 
+$$
+\log \left( \frac{\mu (X)}{1- \mu (X)} \right) = \alpha + f_1 (X_1) + \cdots + f_p (X_p)
+$$
+
+Important: the LHS can also be a function:
+
+$$
+g[\mu (X)] = \alpha + f_1 (X_1) + \cdots + f_p (X_p)
+$$
+
+- Ex could use $g(\mu) = \log (\mu)$
+
+*Aside: parametric vs nonparametric regression*
+
+- Note that functions in GAMs can use attributes other than main effects; ex interactions: functions of multiple variables or different functions of Xj for different levels of a factor Xk
+
+- Can use penalized sum of squares to fit a model - sum of squares with weighted sum of square of second derivative integrated over domain

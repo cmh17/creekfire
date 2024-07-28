@@ -14,10 +14,11 @@ knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 ```
 
 ```{r, warning = FALSE, message = FALSE}
-packages <- c('tidyverse','mgcv','gam','akima')
+packages <- c('tidyverse','mgcv','gam','akima','readr','data.table','vroom',
+              'foreach','doParallel','readr','caret')
 
 # Identify missing (not installed) packages
-new.packages = packages[!(packages %in% installed.packages()[,"Package"])]
+new.packages <-  packages[!(packages %in% installed.packages()[,"Package"])]
 
 # Install new (not installed) packages
 if(length(new.packages)) install.packages(new.packages, repos='http://cran.rstudio.com/') else print('All required packages are installed.')
@@ -29,6 +30,124 @@ invisible(lapply(packages, library, character.only = TRUE))
 wd <- rprojroot::find_rstudio_root_file()
 outDir <- file.path(wd, "Data", fsep="/")
 suppressWarnings(dir.create(outDir)) 
+```
+
+```{r}
+df <- vroom(paste0(wd,"/Data/big_table.csv"))
+names(df)
+
+# need to calculate the change in ET for each row in the df
+
+# subset the table by only values in the boundary for which there is another 
+# point outside the boundary with an elevation within 1 m
+
+# Convert the dataframe to a tibble
+df <- as_tibble(df)
+
+# Create subsets where within_boundary is TRUE and FALSE
+df_within <- df %>% filter(within_boundary == TRUE) %>%
+  filter(!is.na(HUC12))
+
+df_outside <- df %>% filter(is.na(within_boundary)) %>%
+  filter(!is.na(HUC12))
+
+# Initialize the number of cores to use
+num_cores <- detectCores() - 1  # Use one less than the number of available cores
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+
+# Function to process each HUC12 value, find matching control points, and calculate aET and rET
+process_huc12 <- function(huc, df_within, df_outside) {
+  # Subset the data for the current HUC12
+  df_within_huc <- df_within %>% filter(HUC12 == huc)
+  df_outside_huc <- df_outside %>% filter(HUC12 == huc)
+  
+  results <- list()
+  
+  # Iterate over each row in df_within_huc
+  for (i in 1:nrow(df_within_huc)) {
+    within_row <- df_within_huc[i, ]
+    # Find the first matching row in df_outside_huc based on elevation criteria
+    match <- df_outside_huc %>%
+      filter(abs(elev - within_row$elev) <= 1) %>%
+      slice(1)  # Take only the first match
+    
+    # If there is a match, calculate aET and rET and add to results
+    if (nrow(match) > 0) {
+      aET_value <- (within_row$prefire_ET - within_row$postfire_ET) - (match$prefire_ET - match$postfire_ET)
+      rET_value <- aET_value / within_row$prefire_ET
+      results <- append(results, list(c(within_row, aET = aET_value, rET = rET_value)))
+    }
+  }
+  
+  return(bind_rows(results))
+}
+
+# Process each HUC12
+results_list <- process_huc12(huc, df_within, df_outside)
+
+
+# Stop the cluster
+stopCluster(cl)
+
+# Save the intermediate results to a CSV file
+temp_file <- "intermediate_results.csv"
+write_csv(results_list, temp_file)
+
+# Load the intermediate results
+df_final <- read_csv(temp_file)
+
+# Print the resulting tibble with aET and rET
+print(df_final)
+
+```
+
+```{r}
+## 75% of the sample size
+smp_size <- floor(0.75 * nrow(df_final))
+
+## set the seed to make your partition reproducible
+set.seed(123)
+train_ind <- sample(seq_len(nrow(df_final)), size = smp_size)
+
+train <- df_final[train_ind, ]
+test <- df_final[-train_ind, ]
+
+# explore relationships before building model
+ggplot(df_final, aes(x = temp, y = dNDVI)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  labs(title = "dNDVI vs. Temperature")
+
+# fit linear models
+lm_dNDVI <- lm(dNDVI ~ temp + precip + elev + aspect + slope + soil_moisture, data = df_final)
+plot(lm_dNDVI)  # Inspect residuals
+
+# fit GAM with splines
+gam_dNDVI <- gam(dNDVI ~ s(temp) + s(precip) + s(elev) + s(aspect) + s(slope) + s(soil_moisture), data = df_final)
+
+# compare models
+summary(lm_dNDVI)
+summary(gam_dNDVI)
+
+# look at AIC
+AIC(lm_dNDVI, gam_dNDVI)
+
+# CV
+
+# define training control
+train_control <- trainControl(method = "cv", number = 10)
+
+# fit linear model with cross-validation
+cv_lm_dNDVI <- train(dNDVI ~ temp + precip + elev + aspect + slope + soil_moisture, data = df_final, method = "lm", trControl = train_control)
+
+# fit GAM model with cross-validation
+cv_gam_dNDVI <- train(dNDVI ~ s(temp) + s(precip) + s(elev) + s(aspect) + s(slope) + s(soil_moisture), data = df_final, method = "gam", trControl = train_control)
+
+# Compare RMSE
+cv_lm_dNDVI$results
+cv_gam_dNDVI$results
+
 ```
 
 

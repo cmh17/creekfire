@@ -1,0 +1,24 @@
+---
+title: "Describing Evapotranspiration Reduction following Wildfire"
+author: "Carrie Hashimoto"
+format: beamer
+pdf-engine: xelatex
+---
+
+# The Creek Fire
+
+-   2020-09-04 through 2020-12-24
+
+-   380,000 acres burned \[x\]
+
+## Data: OpenET, HLS, SRTM, NLDAS, TerraClimate
+
+-   Aggregate of 6 other models (what does this entail)
+
+-   What data go in?
+
+-   30 m resolution vs XX for flux towers or XX for satellite observations
+
+## Model: GAM
+
+-
