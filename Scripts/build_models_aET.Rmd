@@ -1,7 +1,7 @@
 ---
-title: "build_gam"
+title: "build_models_aET"
 author: "Carrie Hashimoto"
-date: "2024-07-26"
+date: "2024-07-29"
 output: html_document
 editor_options: 
   chunk_output_type: console
@@ -14,7 +14,7 @@ knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 ```
 
 ```{r, warning = FALSE, message = FALSE}
-packages <- c('tidyverse','mgcv','gam','akima','readr','data.table','vroom',
+packages <- c('tidyverse','mgcv','akima','readr','data.table','vroom',
               'foreach','doParallel','readr','caret')
 
 # Identify missing (not installed) packages
@@ -53,26 +53,66 @@ df_clean <- na.omit(df_final)
 # test <- df_final[-train_ind, ]
 
 # explore relationships before building model
-ggplot(df_clean, aes(x = temp, y = dNDVI)) +
-  geom_point() +
-  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs")) +
-  labs(title = "dNDVI vs. Temperature (GAM)")
+# ggplot(df_clean, aes(x = temp, y = aET)) +
+#   geom_point() +
+#   geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs")) +
+#   labs(title = "aET vs. Temperature (GAM)")
 
-ggplot(df_clean, aes(x = temp, y = aET)) +
-  geom_point() +
-  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs")) +
-  labs(title = "aET vs. Temperature (GAM)")
+# ggplot(df_clean, aes(x = elev, y = aET)) +
+#   geom_point() +
+#   geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs")) +
+#   labs(title = "aET vs. Elevation (GAM)")
 
 # fit linear models
-lm_dNDVI <- lm(dNDVI ~ temp + precip + elev + aspect + slope + soil_moisture, data = df_clean)
+lm_aET <- lm(aET ~ temp + precip + elev + aspect + slope + 
+               soil_moisture + dNDVI + dNBR, data = df_clean)
 
-#plot(lm_dNDVI)  # check residual plots
+summary(lm_aET)
 
+# look at residuals plots
+# takes a while
+#plot(lm_aET)
+
+# try best subset selection
+
+library(leaps)
+
+regfit.full <- regsubsets(aET ~., df_clean, nvmax = length(names(df_clean)) - 1)
+
+reg.summary <- summary(regfit.full)
+
+plot(df_clean)
+
+summary(regfit.full)
+
+# Plot rss, adjr2
+par(mfrow = c(2, 2))
+
+plot(reg.summary$rss, xlab = "Number of Variables", ylab = "RSS",type="l")
+# no point in plotting best RSS since it'll just get smaller as the model grows
+
+# plot adjr2 for each best subset
+plot(reg.summary$adjr2, xlab = "Number of Variables", ylab = "Adjusted RSq",type="l")
+points(which.max(reg.summary$adjr2), reg.summary$adjr2[which.max(reg.summary$adjr2)], col = "red",cex=2, pch = 20)
+
+# plot cp for each best subset
+plot(reg.summary$cp, xlab = "Number of Variables", ylab = "Cp",type="l")
+points(which.min(reg.summary$cp), reg.summary$cp[which.min(reg.summary$cp)], col = "red",cex=2, pch = 20)
+
+# plot BIC for each best subset
+plot(reg.summary$bic, xlab = "Number of Variables", ylab = "BIC",type="l")
+points(which.min(reg.summary$bic), reg.summary$bic[which.min(reg.summary$bic)], col = "red",cex=2, pch = 20)
+```
+
+```{r}
 # fit GAM with splines on all data
-gam_dNDVI <- mgcv::gam(dNDVI ~ s(temp) + s(precip) + s(elev) + s(aspect) + s(slope) + s(soil_moisture), data = df_clean)
+gam_aET <- mgcv::gam(dNDVI ~ s(temp) + s(precip) + s(elev) + 
+                       s(aspect) + s(slope) + s(soil_moisture) +
+                       s(dNDVI) + s(dNBR), data = df_clean)
 
 dim(df_clean)
 gam.check(gam_dNDVI, k.sample = 100000)
+
 
 # compare models
 summary(lm_dNDVI)
