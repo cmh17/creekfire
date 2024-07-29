@@ -30,6 +30,10 @@ invisible(lapply(packages, library, character.only = TRUE))
 wd <- rprojroot::find_rstudio_root_file()
 outDir <- file.path(wd, "Data", fsep="/")
 suppressWarnings(dir.create(outDir)) 
+
+num_cores <- detectCores() - 1
+cl <- makeCluster(num_cores - 1)  # Use one less core than available
+registerDoParallel(cl)
 ```
 
 ```{r}
@@ -62,10 +66,13 @@ ggplot(df_clean, aes(x = temp, y = aET)) +
 # fit linear models
 lm_dNDVI <- lm(dNDVI ~ temp + precip + elev + aspect + slope + soil_moisture, data = df_clean)
 
-plot(lm_dNDVI)  # check residual plots
+#plot(lm_dNDVI)  # check residual plots
 
 # fit GAM with splines on all data
-gam_dNDVI <- gam(dNDVI ~ s(temp) + s(precip) + s(elev) + s(aspect) + s(slope) + s(soil_moisture), data = df_clean)
+gam_dNDVI <- mgcv::gam(dNDVI ~ s(temp) + s(precip) + s(elev) + s(aspect) + s(slope) + s(soil_moisture), data = df_clean)
+
+dim(df_clean)
+gam.check(gam_dNDVI, k.sample = 100000)
 
 # compare models
 summary(lm_dNDVI)
@@ -73,34 +80,18 @@ summary(gam_dNDVI)
 
 # look at AIC
 AIC(lm_dNDVI, gam_dNDVI)
+
+plot.Gam(gam_dNDVI)
 ```
 
 ```{r}
-# explore relationships before building model
-ggplot(df_clean, aes(x = temp, y = dNBR)) +
-  geom_point() +
-  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs")) +
-  labs(title = "dNBR vs. Temperature (GAM)")
+# next step: see if the GAM is significantly better than the linear model
 
-ggplot(df_clean, aes(x = temp, y = dNBR)) +
-  geom_point() +
-  geom_smooth(method = "lm", formula = y ~ x) +
-  labs(title = "dNBR vs. Temperature (LM)")
 
-# fit linear models
-lm_dNBR <- lm(dNBR ~ temp + precip + elev + aspect + slope + soil_moisture, data = df_clean)
-
-plot(lm_dNBR)  # check residual plots
-
-# fit GAM with splines on all data
-gam_dNBR <- gam(dNBR ~ s(temp) + s(precip) + s(elev) + s(aspect) + s(slope) + s(soil_moisture), data = df_clean)
-
-# compare models
-summary(lm_dNBR)
-summary(gam_dNBR)
-
-# look at AIC
-AIC(lm_dNBR, gam_dNBR)
 ```
 
+```{r}
+stopCluster(cl)
+registerDoSEQ()
+```
 

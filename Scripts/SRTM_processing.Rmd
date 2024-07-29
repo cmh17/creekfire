@@ -58,4 +58,4 @@ terra::global(temperature, fun="isNA") # No NAs
 names(temperature) <- "temperature"
 ```
 
-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
+

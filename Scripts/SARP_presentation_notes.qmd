@@ -38,6 +38,17 @@ $$
 
 -   Not much difference between using natural and smoothing splines, but natural are a bit easier to fit
 
+For smoothing splines,
+
+$$
+RSS = \sum_{i=1}^n (y_i - g(x_i))^2 + \lambda \int g'' (t)^2 dt
+$$
+
+where $\lambda \geq 0$ is the tuning parameter and $g$ that minimizes the RSS is a smoothing spline.
+
+- minimally rough: second derivative is zero, so could be a linear function
+
+
 - I should probably start with a MLR model just to see what the general relationships look like
 
 - Backfitting is needed to fit smoothing splines since you can't use LS with them
@@ -64,7 +75,7 @@ Non-linear extensions of regression
 
 - Local regression - similar to splines
 
-- GAMs combine these mthods for multiple predictors
+- GAMs combine these methods for multiple predictors
 
 ## Model Selection
 https://rdrr.io/cran/mgcv/man/gam.selection.html
@@ -74,7 +85,11 @@ https://rdrr.io/cran/mgcv/man/gam.selection.html
 
 - A UBRE is scaled AIC for a generalized case or Cp for the additive model case
 
+
+
 **review any Chi material**
+
+- Lecture 14
 
 ### Automatic term selection
 
@@ -117,3 +132,6 @@ $$
 - Note that functions in GAMs can use attributes other than main effects; ex interactions: functions of multiple variables or different functions of Xj for different levels of a factor Xk
 
 - Can use penalized sum of squares to fit a model - sum of squares with weighted sum of square of second derivative integrated over domain
+
+# Lecture 11 - review K-fold cross validation
+
