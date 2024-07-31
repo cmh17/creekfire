@@ -37,26 +37,23 @@ registerDoParallel(cl)
 ```
 
 ```{r}
-df_final <- vroom::vroom("intermediate_results.csv")
-df_final$rET <- df_final$aET / df_final$prefire_ET * 100
+df <- vroom::vroom("model_df.csv")
+head(model_df)
 
-df_final$rET # make sure this is actually in percent
-
-# remove rows with NAs - all in aspect - why?
-df_clean <- na.omit(df_final)
-
-model_df <- df_clean[c("aET","rET","lat","lon","dNDVI","dNBR","temp","precip",
-                       "elev","aspect","slope","soil_moisture")]
-
-# get a subset for visualization
+# get a subset for visualization later
 set.seed(0)
 
 k <- 1000
-n <- nrow(df_clean)
+n <- nrow(model_df)
 
 folds <- sample(rep(1:k, length = n))
 
-model_df_fold1 <- model_df[folds == 1, ]
+model_df_fold1 <- model_df[folds == 1,]
+```
+
+```{r}
+predictors <- c("prefire_ndvi","dnbr","elev","slope","aspect",
+                   "north","lat","temp","precip")
 ```
 
 ```{r}
@@ -64,16 +61,16 @@ model_df_fold1 <- model_df[folds == 1, ]
 # first use all predictors, no interaction terms
 
 # Fit the model using bam
-bam_aET <- mgcv::bam(rET ~ s(temp, bs = "cs", k = 50) + s(precip, bs = "cs", k = 50) +
-                       s(elev, bs = "cs", k = 60) + s(aspect, bs = "cs", k = 50) + 
-                       s(slope, bs = "cs", k = 50) + s(soil_moisture, bs = "cs", k = 50) +
-                       s(dNDVI, bs = "cs", k = 40) + s(dNBR, bs = "cs", k = 40) +
-                       s(lon, bs = "cs", k = 60) + s(lat, bs = "cs", k = 60),
-                     data = df_clean, method = "fREML")
+bam_rET <- mgcv::bam(rET ~ te(prefire_ndvi) + te(dnbr) +
+                       te(elev) + te(slope) + 
+                       te(aspect) + te(north) +
+                       te(lat) + te(temp) +
+                       te(precip),
+                     data = df, method = "fREML")
 
 # check model diagnostics
 par(mfrow = c(2, 2))
-gam.check(bam_aET) 
+gam.check(bam_rET) 
 
 
 ```

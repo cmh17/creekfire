@@ -4,7 +4,7 @@ author: "Carrie Hashimoto"
 date: "2024-07-24"
 output: html_document
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ## Setup:
@@ -107,6 +107,13 @@ names(dnbr) <- "dnbr"
 rdnbr <- dnbr / sqrt(abs(prefire_nbr/1000))
 names(rdnbr) <- "rdnbr"
 
+# lordy be
+# need to calculate northness
+
+# I assume these are in degrees
+north <- sin(slope * pi / 180) * cos(aspect * pi / 180)
+names(north) <- "north" 
+
 rasterized_boundary <- terra::rasterize(creekfire_geojson, prefire_et, field=1, background=NA)
 names(rasterized_boundary) <- "burned"
 
@@ -126,6 +133,7 @@ prefire_nbr_resampled <-  terra::resample(prefire_nbr,prefire_et)
 dndvi_resampled <- terra::resample(dndvi,prefire_et)
 dnbr_resampled <- terra::resample(dnbr,prefire_et)
 rdnbr_resampled <- terra::resample(rdnbr,prefire_et)
+north_resampled <- terra::resample(north,prefire_et)
 
 ```
 
@@ -147,6 +155,7 @@ dnbr_resampled_cropped <- terra::crop(dnbr_resampled,boundary_vec,mask=TRUE)
 rdnbr_resampled_cropped <- terra::crop(rdnbr_resampled,boundary_vec,mask=TRUE)
 slope_resampled_cropped <- terra::crop(slope_resampled,boundary_vec,mask=TRUE)
 aspect_resampled_cropped <- terra::crop(aspect_resampled,boundary_vec,mask=TRUE)
+north_resampled_cropped <- terra::crop(north_resampled,boundary_vec,mask=TRUE)
 rasterized_boundary_cropped <- terra::crop(rasterized_boundary,boundary_vec,mask=TRUE)
 rasterized_HUC12_cropped <- terra::crop(rasterized_HUC12,boundary_vec,mask=TRUE)
 
@@ -171,6 +180,7 @@ dnbr_values <- terra::extract(dnbr_resampled_cropped, coords)
 rdnbr_values <- terra::extract(rdnbr_resampled_cropped, coords)
 aspect_values <- terra::extract(aspect_resampled_cropped, coords)
 slope_values <- terra::extract(slope_resampled, coords)
+north_values <- terra::extract(north_resampled, coords)
 rasterized_boundary_values <- terra::extract(rasterized_boundary_cropped, coords)
 rasterized_HUC12_values <- terra::extract(rasterized_HUC12_cropped, coords)
 
@@ -192,11 +202,19 @@ data_table <- data.table(
   precip = precipitation_values[, "precipitation"], 
   elev = elevation_values[, "elevation"],    
   aspect = aspect_values[,"aspect"], 
-  slope = slope_values[,"slope"],  
+  slope = slope_values[,"slope"], 
+  north = north_values[, "north"],
   soil_moisture = soil_moisture_values[, "soil_moisture"] 
 )
 
 
+hist(data_table_cleaned[data_table_cleaned$within_burn_area == FALSE]$dnbr)
+hist(data_table_cleaned[data_table_cleaned$within_burn_area == TRUE]$dnbr)
+
+hist(data_table_cleaned[data_table_cleaned$within_burn_area == FALSE]$prefire_nbr)
+hist(data_table_cleaned[data_table_cleaned$within_burn_area == TRUE]$prefire_nbr)
+
+hist(data_table_cleaned$prefire_ndvi)
 # remove rows without HUC12 since those aren't in the area of interest
 data_table_cleaned <- data_table[!is.na(data_table$huc12)]
 

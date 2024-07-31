@@ -14,10 +14,6 @@ knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 ```
 
 ```{r, warning = FALSE, message = FALSE}
-
-# elev, precip, temp
-# elev, dNBR
-
 packages <- c('tidyverse','mgcv','akima','readr','data.table','vroom',
               'foreach','doParallel','readr','caret','leaps','parallel','leaps',
               'viridis','combinat','coefplot','car','interactions','ggeffects')
@@ -42,31 +38,38 @@ registerDoParallel(cl)
 ```
 
 ```{r}
-df_final <- vroom::vroom("intermediate_results.csv")
-df_final$rET <- df_final$aET / df_final$prefire_ET * 100
-
-# remove rows with NAs
-df_clean <- na.omit(df_final)
+df <- vroom::vroom("model_df.csv")
 ```
 
 ```{r}
-# define interaction terms
-# lat + lon + dNDVI + dNBR + temp + precip + elev + aspect + slope + soil_moisture
-predictors <- list("lat", "lon", "dNDVI", "dNBR", "temp",
-                   "precip","elev","aspect","slope","soil_moisture")
+predictors <- c("prefire_ndvi","dnbr","elev","slope","aspect",
+                   "north","lat","temp","precip")
+```
+
+```{r}
+# start with a basic MLR model
+lm_rET <- lm(rET ~ prefire_ndvi + dnbr + elev + slope + aspect + north +
+               lat + temp + precip, data = df)
+
+summary.lm_rET <- summary(lm_rET)
+summary.lm_rET 
+
+save(lm_rET, file = "lm_rET.RData")
+```
+
+
+```{r}
+cor_matrix <- cor(df[predictors], use = "complete.obs")
+cor_matrix
 
 # Generate two-way interactions
-two_way_interactions <- combn(predictors[4:10], 2, function(x) paste(x, collapse = ":"))
+two_way_interactions <- combn(predictors, 2, function(x) paste(x, collapse = ":"))
 
 # Print two-way interactions
 two_way_interactions
 
 # Only grab the ones of interest... otherwise it would take too long :(
-all_terms <- c(predictors,"dNBR:temp","dNBR:precip","dNBR:elev","dNBR:aspect",
-               "dNBR:soil_moisture","temp:precip","temp:elev",
-               "temp:aspect","temp:slope","temp:soil_moisture","precip:elev",
-               "precip:aspect","precip:slope","precip:soil_moisture","elev:aspect",
-               "elev:slope","elev:soil_moisture","aspect:slope")
+all_terms <- c(predictors,two_way_interactions)
 
 # Create the formula
 interaction_formula <- as.formula(paste("rET ~", paste(all_terms, collapse = " + ")))
@@ -76,42 +79,74 @@ interaction_formula
 ```
 
 ```{r}
+# make a huge interaction model
+lm_rET_interaction <- lm(interaction_formula, data = df)
+
+summary.lm_rET_interaction <- summary(lm_rET_interaction)
+summary.lm_rET_interaction
+
+save(lm_rET_interaction, file = "lm_rET_interaction.RData")
+
+# so some of these aren't helpful; do model selection
+```
+
+
+
+
+```{r}
+library(leaps)
+
 set.seed(0)
 
 k <- 10
-n <- nrow(df_clean)
+n <- nrow(df)
 
 folds <- sample(rep(1:k, length = n))
 
-cv.errors <- matrix(NA, k, 10,
-                    dimnames = list(NULL, paste(1:10)))
+cv.errors <- matrix(NA, k, 10, dimnames = list(NULL, paste(1:10)))
 
-# define a prediction function
-predict.regsubsets <- function(object, newdata, id, ...) {
-  form <- as.formula(object$call [[2]])
-  mat <- model.matrix(form, newdata)
+# Define a prediction function for regsubsets models
+predict.regsubsets <- function(object, newdata, id) {
+  # Extract the formula from the regsubsets object
+  formula <- as.formula(object$call[[2]])
+  mat <- model.matrix(formula, newdata)
   coefi <- coef(object, id = id)
   xvars <- names(coefi)
-  mat[, xvars] %*% coefi
-  }
+  mat[, xvars, drop = FALSE] %*% coefi
+}
+```
 
+
+```{r}
+# Cross-validation loop
 for (j in 1:k) {
-  best.fit <- regsubsets(rET ~ lat + lon + dNDVI + dNBR + temp + precip + 
-                           elev + aspect +  slope + soil_moisture + dNBR:temp + 
-                           dNBR:precip + dNBR:elev + dNBR:aspect + 
-                           dNBR:soil_moisture + temp:precip + temp:elev + 
-                           temp:aspect + temp:slope + temp:soil_moisture + 
-                           precip:elev + precip:aspect + precip:slope + 
-                           precip:soil_moisture + elev:aspect + 
-                           elev:slope + elev:soil_moisture + aspect:slope,
-                         data = df_clean[folds != j, ],
-                         nvmax = 10)
+  train_data <- df[folds != j, ]
+  test_data <- df[folds == j, ]
+  
+  # Fit the regsubsets model on the training data
+  best.fit <- regsubsets(rET ~ prefire_ndvi + dnbr + elev + slope + aspect + north + lat + 
+    temp + precip + prefire_ndvi:dnbr + prefire_ndvi:elev + prefire_ndvi:slope + 
+    prefire_ndvi:aspect + prefire_ndvi:north + prefire_ndvi:lat + 
+    prefire_ndvi:temp + prefire_ndvi:precip + dnbr:elev + dnbr:slope + 
+    dnbr:aspect + dnbr:north + dnbr:lat + dnbr:temp + dnbr:precip + 
+    elev:slope + elev:aspect + elev:north + elev:lat + elev:temp + 
+    elev:precip + slope:aspect + slope:north + slope:lat + slope:temp + 
+    slope:precip + aspect:north + aspect:lat + aspect:temp + 
+    aspect:precip + north:lat + north:temp + north:precip + lat:temp + 
+    lat:precip + temp:precip, data = train_data, nvmax = 10)
+  
   for (i in 1:10) {
-    pred <- predict(best.fit, df_clean[folds == j, ], id = i)
-    cv.errors[j, i] <- 
-      mean((df_clean$aET[folds == j] - pred)^2)
+    pred <- predict.regsubsets(best.fit, newdata = test_data, id = i)
+    cv.errors[j, i] <- mean((test_data$aET - pred)^2)
   }
 }
+
+# Calculate average CV error for each model size
+mean_cv_errors <- apply(cv.errors, 2, mean)
+
+# Print results
+print(mean_cv_errors)
+
 ```
 
 ```{r}
@@ -122,136 +157,76 @@ mean.cv.errors <- apply(cv.errors, 2, mean)
 mean.cv.errors
 
 # plot that shit
-par(mfrow = c(1,1))
 plot(mean.cv.errors, type="b")
+
+best_model_size <- which.min(mean.cv.errors)
 ```
 
 ```{r}
 # welp
-# look at it for all data, I guess...
+# now try the full model
 
-regfit.full <- regsubsets(rET ~ lat + lon + dNDVI + dNBR + temp + precip + 
-                           elev + aspect +  slope + soil_moisture + dNBR:temp + 
-                           dNBR:precip + dNBR:elev + dNBR:aspect + 
-                           dNBR:soil_moisture + temp:precip + temp:elev + 
-                           temp:aspect + temp:slope + temp:soil_moisture + 
-                           precip:elev + precip:aspect + precip:slope + 
-                           precip:soil_moisture + elev:aspect + 
-                           elev:slope + elev:soil_moisture + aspect:slope,
-           data=df_clean, nvmax = 28)
+lm_rET_best_subset <- regsubsets(interaction_formula,
+           data=df, nvmax = 10)
 
-reg.summary <- summary(regfit.full)
+lm_rET_best_subset.summary <- summary(lm_rET_best_subset)
 
-reg.summary
-# looks like dNBR is the best predictor
-# dNBR and soil moisture and elev are good together
+lm_rET_best_subset.summary
+
+final_coefs <- coef(lm_rET_best_subset, id = best_model_size) # best model size
+print(final_coefs)
 ```
 
 ```{r}
-# Assuming reg.summary is your dataframe
-# Create a dataframe for plotting
-df <- data.frame(
-  num_vars = seq_along(reg.summary$rss),
-  rss = reg.summary$rss,
-  adjr2 = reg.summary$adjr2,
-  cp = reg.summary$cp,
-  bic = reg.summary$bic
-)
+# final model
 
-highlight_color <- viridis(1, begin = 0.8, end = 1, option="inferno")[1]
+lm_rET_final <- lm(rET ~ dnbr + lat + precip + prefire_ndvi:dnbr + elev:dnbr +
+                     lat:dnbr + lat:precip, data=df)
 
-# Plot RSS
-ggplot(df, aes(x = num_vars, y = rss)) +
-  geom_line(color = viridis(1)) +
-  labs(x = "Number of Variables", y = "RSS") +
-  theme_minimal()
-
-# Plot Adjusted R^2
-ggplot(df, aes(x = num_vars, y = adjr2)) +
-  geom_line(color = viridis(1)) +
-  geom_point(aes(x = which.max(df$adjr2), y = df$adjr2[which.max(df$adjr2)]), color = highlight_color, size = 3) +
-  labs(x = "Number of Variables", y = "Adjusted R^2") +
-  theme_minimal()
-
-# Plot Cp
-ggplot(df, aes(x = num_vars, y = cp)) +
-  geom_line(color = viridis(1)) +
-  geom_point(aes(x = which.min(df$cp), y = df$cp[which.min(df$cp)]), color = highlight_color, size = 3) +
-  labs(x = "Number of Variables", y = "Cp") +
-  theme_minimal()
-
-# Plot BIC
-ggplot(df, aes(x = num_vars, y = bic)) +
-  geom_line(color = viridis(1)) +
-  geom_point(aes(x = which.min(df$bic), y = df$bic[which.min(df$bic)]), color = highlight_color, size = 3) +
-  labs(x = "Number of Variables", y = "BIC") +
-  theme_minimal()
-
+lm_rET_final.summary <- summary(lm_rET_final)
+lm_rET_final.summary
 ```
 
+Try lasso if time:
 ```{r}
+library(glmnet)
 
-# take a look at the model I like the best
-names(coef(regfit.full, 16))
+# prep data
+response <- df$rET
+predictors <- model.matrix(interaction_formula, data = df)[,-1]
 
-# make the 4-variable model and look at the results
-lm_rET_16 <- lm(rET ~ lat + lon + dNBR + temp+aspect + soil_moisture + 
-                  dNBR:temp + dNBR:elev + temp:precip + 
-                  temp:elev + temp:aspect + temp:slope + 
-                  precip:elev + precip:slope + precip:soil_moisture + 
-                  elev:aspect, data = model_df)
+# standardize predictors... 10000 deaths
+predictors <- scale(predictors)
 
-# Save the model to a file
-save(lm_rET_16, file = "lm_rET_16.RData")
+# Cross-validation to find the best lambda
+set.seed(0)
+cv_fit <- cv.glmnet(predictors, response, alpha = 1, nfolds = 10)  # alpha = 1 for Lasso, 0 for Ridge
 
-summary(lm_rET_16)
+# Get the best lambda
+best_lambda <- cv_fit$lambda.min
 
-par(mfrow = c(2, 2))
-plot(lm_rET_16)
+# Fit the final model with the best lambda
+final_model <- glmnet(predictors, response, alpha = 1, lambda = best_lambda)
+
+# Print the coefficients of the final model
+print(coef(final_model))
+
+# Plot the cross-validation results
+plot(cv_fit)
 
 
+print("MLR Coefficients:")
+print(coef(lm_rET_interaction))
 
-```
+print("Lasso Coefficients:")
+print(coef(final_model))
 
-```{r}
-# generate plots for results interpretation
-summary(lm_rET_16)
-
-# Residuals vs Fitted Values
-plot(lm_rET_16, which = 1)
-
-# Normal Q-Q Plot
-plot(lm_rET_16, which = 2)
-
-# Scale-Location Plot
-plot(lm_rET_16, which = 3)
-
-# Residuals vs Leverage Plot
-plot(lm_rET_16, which = 5)
-
-# Coefficient Plot
-coefplot(lm_rET_16)
-
-# Partial Regression Plots
-avPlots(lm_rET_16)
-
-# Interaction Effects Plot
-interaction_plot <- interact_plot(lm_rET_16, pred = temp, modx = precip)
-print(interaction_plot)
-
-# Marginal Effects Plot (example)
-marginal_effects <- ggpredict(lm_rET_16, terms = "elev")
-plot(marginal_effects)
-
-# Predicted vs Actual Plot
-predicted_values <- predict(lm_rET_16, df_clean)
-ggplot(data = df_clean, aes(x = predicted_values, y = aET)) +
-  geom_point() +
-  geom_abline(slope = 1, intercept = 0, color = "red") +
-  labs(x = "Predicted Values", y = "Actual Values") +
-  theme_minimal()
 
 ```
+
+
+
+
 
 
 ```{r}
