@@ -17,7 +17,7 @@ knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 
 ```{r, warning = FALSE, message = FALSE}
 packages <- c('terra','ggplot2','DT', 'rprojroot',
-              'tidyterra','dplyr',"data.table")
+              'tidyterra','dplyr',"data.table","doParallel","parallel")
 
 # Identify missing (not installed) packages
 new.packages = packages[!(packages %in% installed.packages()[,"Package"])]
@@ -33,6 +33,14 @@ wd <- rprojroot::find_rstudio_root_file()
 outDir <- file.path(wd, "Data", fsep="/")
 suppressWarnings(dir.create(outDir)) 
 ```
+
+```{r}
+# Initialize the number of cores to use
+num_cores <- detectCores() - 1  # Use one less than the number of available cores
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+```
+
 
 ## Import all the rasters:
 
@@ -96,15 +104,15 @@ names(dndvi) <- "dndvi"
 dnbr <- terra::rast(paste0(wd,"/Data/HLS_data/diff_mean_nbr.tif"))
 names(dnbr) <- "dnbr"
 
+rdnbr <- dnbr / sqrt(abs(prefire_nbr/1000))
+names(rdnbr) <- "rdnbr"
+
 rasterized_boundary <- terra::rasterize(creekfire_geojson, prefire_et, field=1, background=NA)
 names(rasterized_boundary) <- "burned"
-plot(rasterized_boundary)
 
 rasterized_HUC12 <- terra::rasterize(HUC12, prefire_et, field="HUC12", background=NA)
 names(rasterized_HUC12) <- "HUC12"
-plot(rasterized_HUC12)
 
-# Elevation data - https://search.earthdata.nasa.gov/search/granules/collection-details?p=C2763266360-LPCLOUD!C2763266360-LPCLOUD&pg[1][v]=t&pg[1][gsk]=-start_date&pg[1][m]=download&pg[1][cd]=f&q=srtm&sb[0]=-120.31348%2C35.64266%2C-117.6416%2C38.29532&tl=1721650273!3!!&lat=36.72934533158263&long=-123.22265625000001&zoom=6
 
 postfire_et_resampled <- terra::resample(postfire_et,prefire_et)
 elevation_resampled <- terra::resample(elevation,prefire_et)
@@ -117,6 +125,7 @@ prefire_ndvi_resampled <-  terra::resample(prefire_ndvi,prefire_et)
 prefire_nbr_resampled <-  terra::resample(prefire_nbr,prefire_et)
 dndvi_resampled <- terra::resample(dndvi,prefire_et)
 dnbr_resampled <- terra::resample(dnbr,prefire_et)
+rdnbr_resampled <- terra::resample(rdnbr,prefire_et)
 
 ```
 
@@ -135,6 +144,7 @@ prefire_ndvi_resampled_cropped <- terra::crop(prefire_ndvi_resampled,boundary_ve
 prefire_nbr_resampled_cropped <- terra::crop(prefire_nbr_resampled,boundary_vec,mask=TRUE)
 dndvi_resampled_cropped <- terra::crop(dndvi_resampled,boundary_vec,mask=TRUE)
 dnbr_resampled_cropped <- terra::crop(dnbr_resampled,boundary_vec,mask=TRUE)
+rdnbr_resampled_cropped <- terra::crop(rdnbr_resampled,boundary_vec,mask=TRUE)
 slope_resampled_cropped <- terra::crop(slope_resampled,boundary_vec,mask=TRUE)
 aspect_resampled_cropped <- terra::crop(aspect_resampled,boundary_vec,mask=TRUE)
 rasterized_boundary_cropped <- terra::crop(rasterized_boundary,boundary_vec,mask=TRUE)
@@ -158,6 +168,7 @@ prefire_ndvi_values <- terra::extract(prefire_ndvi_resampled_cropped, coords)
 prefire_nbr_values <- terra::extract(prefire_nbr_resampled_cropped, coords)
 dndvi_values <- terra::extract(dndvi_resampled_cropped, coords)
 dnbr_values <- terra::extract(dnbr_resampled_cropped, coords)
+rdnbr_values <- terra::extract(rdnbr_resampled_cropped, coords)
 aspect_values <- terra::extract(aspect_resampled_cropped, coords)
 slope_values <- terra::extract(slope_resampled, coords)
 rasterized_boundary_values <- terra::extract(rasterized_boundary_cropped, coords)
@@ -168,14 +179,15 @@ rasterized_HUC12_values <- terra::extract(rasterized_HUC12_cropped, coords)
 data_table <- data.table(
   lat = coords[, "y"],
   lon = coords[, "x"],
-  within_boundary = rasterized_boundary_values[,"burned"],
-  HUC12 = rasterized_HUC12_values[,"HUC12"],
-  prefire_NDVI = prefire_ndvi_values[,"prefire_ndvi"],
-  prefire_NBR = prefire_nbr_values[,"prefire_nbr"],
-  dNDVI = dndvi_values[, "dndvi"],
-  dNBR = dnbr_values[, "dnbr"],  
-  prefire_ET = prefire_et_values[, "prefire_et"],              
-  postfire_ET = postfire_et_values[, "postfire_et"],
+  within_burn_area = rasterized_boundary_values[,"burned"],
+  huc12 = rasterized_HUC12_values[,"HUC12"],
+  prefire_ndvi = prefire_ndvi_values[,"prefire_ndvi"],
+  prefire_nbr = prefire_nbr_values[,"prefire_nbr"],
+  dndvi = dndvi_values[, "dndvi"],
+  dnbr = dnbr_values[, "dnbr"], 
+  rdnbr = rdnbr_values[, "rdnbr"],
+  prefire_et = prefire_et_values[, "prefire_et"],              
+  postfire_et = postfire_et_values[, "postfire_et"],
   temp = temperature_values[, "temperature"],    
   precip = precipitation_values[, "precipitation"], 
   elev = elevation_values[, "elevation"],    
@@ -186,20 +198,29 @@ data_table <- data.table(
 
 
 # remove rows without HUC12 since those aren't in the area of interest
-data_table_cleaned <- data_table[!is.na(data_table$HUC12)]
+data_table_cleaned <- data_table[!is.na(data_table$huc12)]
 
 # everything remaining is inside the buffer
 # so if it still has within_boundary is.na, then it must be in the buffer
 # but outside the creekfire burn area
-data_table_cleaned[is.na(data_table_cleaned$within_boundary)]$within_boundary <- FALSE
+data_table_cleaned[is.na(data_table_cleaned$within_burn_area)]$within_burn_area <- FALSE
 
 # git rid of the remaining rows with missing values
 data_table_cleaned <- na.omit(data_table_cleaned)
 
 # Save or inspect the data.table
-write.csv(data_table, "Data/big_table.csv", row.names = FALSE)
+write.csv(data_table_cleaned, "Data/big_table.csv", row.names = FALSE)
+
 
 ```
+
+
+```{r}
+stopCluster(cl)
+registerDoSEQ()
+```
+
+
 
 
 
