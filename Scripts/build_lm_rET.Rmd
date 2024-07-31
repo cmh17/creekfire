@@ -185,6 +185,8 @@ lm_rET_final <- lm(rET ~ dnbr + lat + precip + prefire_ndvi:dnbr + elev:dnbr +
 
 lm_rET_final.summary <- summary(lm_rET_final)
 lm_rET_final.summary
+
+save(lm_rET_final, file = "lm_rET_interaction7.RData")
 ```
 
 Try lasso if time:
@@ -221,7 +223,7 @@ print(coef(lm_rET_interaction))
 print("Lasso Coefficients:")
 print(coef(final_model))
 
-
+save(final_model, file="lasso_rET.RData")
 ```
 
 

@@ -38,17 +38,17 @@ registerDoParallel(cl)
 
 ```{r}
 df <- vroom::vroom("model_df.csv")
-head(model_df)
+head(df)
 
 # get a subset for visualization later
 set.seed(0)
 
 k <- 1000
-n <- nrow(model_df)
+n <- nrow(df)
 
 folds <- sample(rep(1:k, length = n))
 
-model_df_fold1 <- model_df[folds == 1,]
+df_fold1 <- df[folds == 1,]
 ```
 
 ```{r}
@@ -61,121 +61,40 @@ predictors <- c("prefire_ndvi","dnbr","elev","slope","aspect",
 # first use all predictors, no interaction terms
 
 # Fit the model using bam
-bam_rET <- mgcv::bam(rET ~ te(prefire_ndvi) + te(dnbr) +
-                       te(elev) + te(slope) + 
-                       te(aspect) + te(north) +
-                       te(lat) + te(temp) +
-                       te(precip),
+bam_rET <- mgcv::bam(rET ~ s(prefire_ndvi) + s(dnbr) +
+                       s(elev) + s(slope) + 
+                       s(aspect) + s(north) +
+                       s(lat) + s(temp) +
+                       s(precip),
                      data = df, method = "fREML")
 
+bam_rET.summary <- summary(bam_rET)
+bam_rET.summary
+
 # check model diagnostics
-par(mfrow = c(2, 2))
 gam.check(bam_rET) 
-
-
 ```
+
+
 ```{r}
 # try increasing the basis dimensions
 # first use all predictors, no interaction terms
 
-# Fit the model using bam
-bam_aET <- mgcv::bam(rET ~ s(temp, bs = "cs", k = 50) + s(precip, bs = "cs", k = 50) +
-                       s(elev, bs = "cs", k = 60) + s(aspect, bs = "cs", k = 50) + 
-                       s(slope, bs = "cs", k = 50) + s(soil_moisture, bs = "cs", k = 50) +
-                       s(dNDVI, bs = "cs", k = 40) + s(dNBR, bs = "cs", k = 40) +
-                       s(lon, bs = "cs", k = 60) + s(lat, bs = "cs", k = 60),
-                     data = df_clean, method = "fREML")
+# fit the model using bam and variables of interest from lm
+bam_rET_interaction <- mgcv::bam(rET ~ te(dnbr) + te(lat) + te(precip) + 
+                                   ti(prefire_ndvi,dnbr) + ti(elev,dnbr) + 
+                                   ti(lat,dnbr) + ti(lat,precip),
+                     data = df, method = "fREML")
 
+bam_rET_interaction.summary <- summary(bam_rET_interaction)
+bam_rET_interaction.summary
 # check model diagnostics
-par(mfrow = c(2, 2))
-gam.check(bam_aET) 
+gam.check(bam_rET_interaction) 
 
-
+save(bam_rET_interaction, file="bam_rET_interaction_reduced.RData")
 ```
 
 
-
-```{r}
-# Ok, so the model isn't varied enough
-
-# first try adding interaction terms
-
-# based on the linear model, some interactions of interest are these
-bam_aET_16_te <- mgcv::bam(rET ~ te(lat, bs = "cr") + te(lon, bs = "c") +
-                       te(dNBR, bs = "cs") + te(temp, bs = "cs") +
-                       te(aspect, bs = "cs") + te(soil_moisture, bs = "cs") +
-                       ti(dNBR, temp, bs = "cs") + ti(dNBR, elev, bs = "cs") +
-                       ti(temp, precip, bs = "cs") + ti(precip, elev, bs = "cs") +
-                       ti(temp, aspect, bs = "cs") + ti(temp, slope, bs = "cs") +
-                       ti(precip, elev, bs = "cs") + ti(precip, slope, bs = "cs") +
-                       ti(precip, soil_moisture, bs = "cs") +
-                       ti(elev, aspect, bs = "cs"),
-                     data = model_df, method = "fREML")
-
-summary(bam_aET_16_te)
-gam.check(bam_aET_16_te)
-```
-```{r}
-model_df
-```
-
-
-```{r}
-# Try applying a log transformation
-model_df$log_rET <- log(model_df$rET + abs(min(model_df$rET)) + 1)
-
-# Fit the model
-bam_aET_16_log <- mgcv::bam(log_rET ~ s(lat, bs = "cs") + s(lon, bs = "cs") +
-                           s(dNBR, bs = "cs") + s(temp, bs = "cs") +
-                           s(aspect, bs = "cs") + s(soil_moisture, bs = "cs") +
-                           ti(dNBR, temp, bs = "cs") + ti(dNBR, elev, bs = "cs") +
-                           ti(temp, precip, bs = "cs") + ti(precip, elev, bs = "cs") +
-                           ti(temp, aspect, bs = "cs") + ti(temp, slope, bs = "cs") +
-                           ti(precip, elev, bs = "cs") + ti(precip, slope, bs = "cs") +
-                           ti(precip, soil_moisture, bs = "cs") +
-                           ti(elev, aspect, bs = "cs"),
-                         data = model_df, method = "fREML")
-
-summary(bam_aET_16_log)
-
-gam.check(bam_aET_16_log)
-```
-
-
-
-```{r}
-bam_rET_16 <- mgcv::bam(rET ~ s(lat, bs = "tp", k = 100) + s(lon, bs = "tp", k = 100) +
-                       s(dNBR, bs = "tp", k = 100) + s(temp, bs = "tp", k = 100) +
-                       s(aspect, bs = "tp", k = 100) + s(soil_moisture, bs = "tp", k = 100) +
-                       ti(dNBR, temp, bs = "tp") + ti(dNBR, elev, bs = "tp") +
-                       ti(temp, precip, bs = "tp") + ti(precip, elev, bs = "tp") +
-                       ti(temp, aspect, bs = "tp") + ti(temp, slope, bs = "tp") +
-                       ti(precip, elev, bs = "tp") + ti(precip, slope, bs = "tp") +
-                       ti(precip, soil_moisture, bs = "tp") +
-                       ti(elev, aspect, bs = "tp"),
-                     data = model_df, method = "fREML")
- 
-save(bam_rET_16, file = "bam_rET_16.RData")
-
-gam.check(bam_rET_16)
-
-```
-
-```{r}
-# take a look at fitted values... fear
-
-fv_fold1 <- fitted_values(gam_rET_full_no_interaction, data = model_df_fold1)
-
-names(fv)
-
-ggplot(data=fv) +
-  geom_point(aes(x=elev,y=.fitted,color="GAM fitted values")) +
-  geom_point(aes(x=elev,y=rET,color="Response")) +
-  scale_color_viridis_d(option = "D") +
-  labs(title="rET vs elevation: response and GAM fitted values",
-       x="Elevation(m)", y="rET (%)")
-
-```
 
 
 ```{r}
