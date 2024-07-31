@@ -49,6 +49,50 @@ where $\lambda \geq 0$ is the tuning parameter and $g$ that minimizes the RSS is
 - minimally rough: second derivative is zero, so could be a linear function
 
 
+
+
+# GAM: multivariate considerations
+https://stats.stackexchange.com/questions/45446/intuition-behind-tensor-product-interactions-in-gams-mgcv-package-in-r
+
+regular ass normal equation
+
+$$
+\beta = (X' X)^{-1} X' \mathbf{y}
+$$
+smoothness penalty
+
+$$
+\beta = (X' X + \lambda S)^{-1} X' \mathbf{y}
+$$
+- where S is a quadratic i by i penalty matrix
+
+- creates issues when x_i are not all on the same scale
+
+## Tensor product smooths
+
+- address inputs w different units
+
+- don't have to have multivariate marginal bases
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 - I should probably start with a MLR model just to see what the general relationships look like
 
 - Backfitting is needed to fit smoothing splines since you can't use LS with them
@@ -134,4 +178,7 @@ $$
 - Can use penalized sum of squares to fit a model - sum of squares with weighted sum of square of second derivative integrated over domain
 
 # Lecture 11 - review K-fold cross validation
+
+file:///Users/Carrie/Desktop/creekfire/short-gam/slides/smooth-toolbox.pdf
+- Since predictors aren't all in the same units, should use scale invariant smooths
 

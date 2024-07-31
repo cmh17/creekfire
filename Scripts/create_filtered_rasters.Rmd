@@ -60,6 +60,7 @@ for (i in 1:length(bands)) {
   stacks[[bands[i]]] <- band_stack
 }
 
+
 # define functions to calculate NDVI and NBR
 calculate_ndvi <- function(nir, red){
   (nir - red) / (nir + red)

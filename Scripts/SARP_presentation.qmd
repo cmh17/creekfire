@@ -1,24 +1,201 @@
 ---
 title: "Describing Evapotranspiration Reduction following Wildfire"
 author: "Carrie Hashimoto"
-format: beamer
-pdf-engine: xelatex
+institution: "Rice University"
+format:
+  beamer:
+    navigation: horizontal
+    header-includes: |
+       \setbeamertemplate{navigation symbols}{}
+       \setbeamertemplate{footline}[page number]
 ---
 
-# The Creek Fire
+# Motivation: wildfire trends
+<!-- introduction - motivation -->
 
--   2020-09-04 through 2020-12-24
+- From 2000 to 2017, the area of the Sierra Nevada that has been burned has been 78% higher than in the preceding 15 years (x)
 
--   380,000 acres burned \[x\]
+- Climate warming
 
-## Data: OpenET, HLS, SRTM, NLDAS, TerraClimate
+-- longer fire season, hotter/drier summers, earlier snowmelt
 
--   Aggregate of 6 other models (what does this entail)
+- 20th century forest management and tree density
 
--   What data go in?
+<!-- introduction - background -->
+# Background: Creek Fire
+- 2020-09-04 through 2020-12-24
+- 380,000 acres burned \[x\]
 
--   30 m resolution vs XX for flux towers or XX for satellite observations
+# Background: Creek Fire
+<!-- \includegraphics[width=\textwidth]{/Users/Carrie/Desktop/creekfire/Figures/CreekFireBurnArea.png} -->
 
-## Model: GAM
 
--
+![](/Users/Carrie/Desktop/creekfire/Figures/CreekFireBurnArea.png){fig-align="center" width="80%"}
+
+
+<!-- introduction - data -->
+# Data: OpenET, HLS, SRTM, NLDAS, TerraClimate
+
+-- OpenET: 30 m res aggregate of 6 other models
+
+-- HLS: 30 m spectral data
+
+- use to calculate NDVI and NBR
+
+-- SRTM: 2000 elevation data
+
+- derive slope and aspect
+
+-- NLDAS: 12 km temperature data
+
+<!-- - *is this modeled?* -->
+
+-- TerraClimate: 4 km precipitation and soil moisture data
+
+<!-- - *is this modeled?* -->
+<!-- -   30 m resolution vs XX for flux towers or XX for satellite observations -->
+
+<!-- methods 1 -->
+
+# Background: ET Change
+
+![](/Users/Carrie/Desktop/creekfire/Figures/prefire_ET.png){fig-align="center" width="80%"}
+
+
+# Background: ET Change
+
+![](/Users/Carrie/Desktop/creekfire/Figures/postfire_ET.png){fig-align="center" width="80%"}
+
+
+# Methods: MLR
+
+- Multiple linear regression
+
+- Best subset model selection
+
+- RSS, adj. $R^2$, Cp, BIC
+
+$$
+E[y \mid \mathbf{x}] = \beta_0 + \beta_1 x_{1} + ... + \beta_p x_{p} + \epsilon
+$$
+
+<!-- methods 2 -->
+
+# Methods: GAM
+
+- Generalized additive model
+
+$$
+g(E[y \mid \mathbf{x}]) = \beta_0 + f_1(x_{1}) + f_2(x_{2}) + \cdots + f_p(x_{p}) + \epsilon
+$$
+
+# Methods: aET and rET
+
+- absolute evapotranspiration
+
+\begin{align*}
+aET &= (ET_{\text{burned,prefire}} - ET_{\text{burned,postfire}}) \\
+    &\quad - (ET_{\text{control,prefire}} - ET_{\text{control,postfire}}) \\
+rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
+\end{align*}
+
+<!-- # methods 4 -->
+
+<!-- # methods 5 -->
+
+# Results: aET MLR without interaction
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm4selection.png}
+
+# Results: aET MLR without interaction
+
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm4summary.png}
+
+# Results: aET MLR without interaction
+
+\includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot1.png}
+
+# Results: aET MLR without interaction
+
+\includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot2.png}
+
+# Results: aET MLR without interaction
+
+\includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot3.png}
+
+# Results: aET MLR without interaction
+
+\includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot4.png}
+
+<!-- # Results: rET MLR with interaction -->
+
+<!-- \begin{columns}[t] -->
+<!--   \begin{column}{0.5\textwidth} -->
+<!--     \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm_rET_regfit_adjr2.png} -->
+<!--   \end{column} -->
+<!--   \begin{column}{0.5\textwidth} -->
+<!--     \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm_rET_cv_errors.png} -->
+<!--   \end{column} -->
+<!-- \end{columns} -->
+
+
+<!-- # Results: rET MLR with interaction -->
+<!-- \includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm_rET_16_summary1.png} -->
+
+<!-- # Results: rET MLR with interaction -->
+
+<!-- \includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm_rET_regfit_summary.png} -->
+
+<!-- \begin{columns}[T] % [T] aligns content at the top of the columns -->
+<!--   \begin{column}{0.5\textwidth} -->
+<!--     \includegraphics[width=0.9\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot1.png} \\ % Adjust width to fit -->
+<!--     \includegraphics[width=0.9\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot2.png} -->
+<!--   \end{column} -->
+<!--   \begin{column}{0.5\textwidth} -->
+<!--     \includegraphics[width=0.9\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot3.png} \\ % Adjust width to fit -->
+<!--     \includegraphics[width=0.9\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot4.png} -->
+<!--   \end{column} -->
+<!-- \end{columns} -->
+
+
+
+
+# Results: GAM
+
+\includegraphics[width=0.7\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/bamfullsummary.png}
+
+# Results: GAM
+
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/bamfullcheck.png}
+
+# Results: GAM
+
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/bamfullcheck2.png}
+
+# Conclusions
+
+- MLR vs GAM, interpretibility vs accuracy
+
+- Splines that fit a particular fire response may not be useful
+
+- Consider model complexity
+
+# Future Work
+
+-- rET may contain more meaning
+
+-- GAMs: alternative link functions and smooths
+
+- Isotropic vs scale invariant
+
+- Model usefulness: application to other fires
+
+<!-- -- Other predictors -->
+
+<!-- - Burn severity -->
+
+<!-- -- Alternative link functions -->
+
+<!-- - Higher res. precip, temp, soil moisture -->
+
+
+

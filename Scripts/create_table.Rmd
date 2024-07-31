@@ -84,6 +84,12 @@ names(slope) <- "slope"
 aspect <- terra::rast(paste0(wd,"/Data/SRTM_data/srtm_aspect.tif"))
 names(aspect) <- "aspect"
 
+prefire_ndvi <- terra::rast(paste0(wd,"/Data/HLS_data/prefire_mean_ndvi.tif"))
+names(prefire_ndvi) <- "prefire_ndvi"
+
+prefire_nbr <- terra::rast(paste0(wd,"/Data/HLS_data/prefire_mean_nbr.tif"))
+names(prefire_nbr) <- "prefire_nbr"
+
 dndvi <- terra::rast(paste0(wd,"/Data/HLS_data/diff_mean_ndvi.tif"))
 names(dndvi) <- "dndvi"
 
@@ -107,37 +113,11 @@ precipitation_resampled <- terra::resample(precipitation,prefire_et)
 soil_moisture_resampled <- terra::resample(soil_moisture,prefire_et)
 slope_resampled <- terra::resample(slope,prefire_et)
 aspect_resampled <- terra::resample(aspect,prefire_et)
+prefire_ndvi_resampled <-  terra::resample(prefire_ndvi,prefire_et)
+prefire_nbr_resampled <-  terra::resample(prefire_nbr,prefire_et)
 dndvi_resampled <- terra::resample(dndvi,prefire_et)
 dnbr_resampled <- terra::resample(dnbr,prefire_et)
 
-# plot(slope_resampled)
-# 
-# terra::writeRaster(postfire_et,paste0(wd,"/Data/SRTM_data/SRTM_mosaic_resampled.tif"),
-#                    overwrite=TRUE)
-# terra::writeRaster(temperature_resampled,paste0(wd,"/Data/NLDAS2_DAILY_tasmean_2020-03-04_2020-09-04_resampled.tif"),
-#                    overwrite=TRUE)
-# terra::writeRaster(temperature,paste0(wd,"/Data/NLDAS2_DAILY_tasmean_2020-03-04_2020-09-04_resampled.tif"),
-#                    overwrite=TRUE)
-# terra::writeRaster(precipitation_resampled,paste0(wd,"/Data/TERRACLIMATE_pr_2020-03-01_2020-08-31_resampled.tif"),
-#                    overwrite=TRUE)
-# terra::writeRaster(soil_moisture_resampled,paste0(wd,"/Data/TERRACLIMATE_soil_2020-03-01_2020-08-31_resampled.tif"),
-#                    overwrite=TRUE)
-# terra::writeRaster(postfire_et_resampled,paste0(wd,"/Data/openET_data/tiffs/postfire_mean_ET_resampled.tif"),
-#                    overwrite=TRUE)
-# terra::writeRaster(postfire_et_resampled,paste0(wd,"/Data/openET_data/tiffs/rasterized_creekfire_geojson.tif"),
-#                    overwrite=TRUE)
-# terra::writeRaster(slope_resampled,paste0(wd,"/Data/SRTM_data/SRTM_slope_resampled.tif"),
-#                    overwrite=TRUE)
-# terra::writeRaster(aspect_resampled,paste0(wd,"/Data/SRTM_data/SRTM_aspect_resampled.tif"),
-#                    overwrite=TRUE)
-# 
-# # diff mean NDVI
-# diff_mean_ndvi <- terra::rast(paste0(wd,"/Data/HLS_data/diff_mean_ndvi.tif"))
-# 
-# # diff mean NBR
-# diff_mean_nbr <- terra::rast(paste0(wd,"/Data/HLS_data/diff_mean_nbr.tif"))
-# 
-# # NDVI and NBR should already be resampled... I hope
 ```
 
 
@@ -151,6 +131,8 @@ elevation_resampled_cropped <- terra::crop(elevation_resampled,boundary_vec,mask
 temperature_resampled_cropped <- terra::crop(temperature_resampled,boundary_vec,mask=TRUE)
 precipitation_resampled_cropped <- terra::crop(precipitation_resampled,boundary_vec,mask=TRUE)
 soil_moisture_resampled_cropped <- terra::crop(soil_moisture_resampled,boundary_vec,mask=TRUE)
+prefire_ndvi_resampled_cropped <- terra::crop(prefire_ndvi_resampled,boundary_vec,mask=TRUE)
+prefire_nbr_resampled_cropped <- terra::crop(prefire_nbr_resampled,boundary_vec,mask=TRUE)
 dndvi_resampled_cropped <- terra::crop(dndvi_resampled,boundary_vec,mask=TRUE)
 dnbr_resampled_cropped <- terra::crop(dnbr_resampled,boundary_vec,mask=TRUE)
 slope_resampled_cropped <- terra::crop(slope_resampled,boundary_vec,mask=TRUE)
@@ -172,24 +154,14 @@ temperature_values <- terra::extract(temperature_resampled_cropped, coords)
 precipitation_values <- terra::extract(precipitation_resampled_cropped, coords)
 elevation_values <- terra::extract(elevation_resampled_cropped, coords)
 soil_moisture_values <- terra::extract(soil_moisture_resampled_cropped, coords)
+prefire_ndvi_values <- terra::extract(prefire_ndvi_resampled_cropped, coords)
+prefire_nbr_values <- terra::extract(prefire_nbr_resampled_cropped, coords)
 dndvi_values <- terra::extract(dndvi_resampled_cropped, coords)
 dnbr_values <- terra::extract(dnbr_resampled_cropped, coords)
 aspect_values <- terra::extract(aspect_resampled_cropped, coords)
 slope_values <- terra::extract(slope_resampled, coords)
 rasterized_boundary_values <- terra::extract(rasterized_boundary_cropped, coords)
 rasterized_HUC12_values <- terra::extract(rasterized_HUC12_cropped, coords)
-
-# Check if each point is within the boundary
-# boundary_check <- function(lat, lon, boundary_vec) {
-#   # Create a SpatVector from the coordinates
-#   points <- vect(data.frame(x = lon, y = lat), geom = c("x", "y"), crs = crs(boundary_vec))
-#   
-#   # Perform intersection to check if points fall within the boundary
-#   in_boundary <- !is.na(terra::intersect(points, boundary_vec))
-#   
-#   return(in_boundary)
-# }
-
 
 
 # Create the data.table
@@ -198,6 +170,8 @@ data_table <- data.table(
   lon = coords[, "x"],
   within_boundary = rasterized_boundary_values[,"burned"],
   HUC12 = rasterized_HUC12_values[,"HUC12"],
+  prefire_NDVI = prefire_ndvi_values[,"prefire_ndvi"],
+  prefire_NBR = prefire_nbr_values[,"prefire_nbr"],
   dNDVI = dndvi_values[, "dndvi"],
   dNBR = dnbr_values[, "dnbr"],  
   prefire_ET = prefire_et_values[, "prefire_et"],              
@@ -211,10 +185,19 @@ data_table <- data.table(
 )
 
 
+# remove rows without HUC12 since those aren't in the area of interest
+data_table_cleaned <- data_table[!is.na(data_table$HUC12)]
+
+# everything remaining is inside the buffer
+# so if it still has within_boundary is.na, then it must be in the buffer
+# but outside the creekfire burn area
+data_table_cleaned[is.na(data_table_cleaned$within_boundary)]$within_boundary <- FALSE
+
+# git rid of the remaining rows with missing values
+data_table_cleaned <- na.omit(data_table_cleaned)
+
 # Save or inspect the data.table
 write.csv(data_table, "Data/big_table.csv", row.names = FALSE)
-
-
 
 ```
 
