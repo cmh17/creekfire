@@ -129,7 +129,7 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 
 # Choosing covariates - initial MLR
 
-- Guided by Ma et. al., 2020
+- Use it all! no interactions
 \begin{align*}
 \text{rET} &= \beta_0 + \beta_1 \cdot \text{pre-fire NDVI} + \beta_2 \cdot \text{dNBR} + \beta_3 \cdot \text{elevation}  \\
 &\quad + \beta_4 \cdot \text{slope} + \beta_5 \cdot \text{aspect} \\
@@ -286,17 +286,19 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 
 # Future Work
 
-- GAM model selection
+- Other predictors
+
+  -+ forest structure
 
 - Alternative models
 
-  + Random forests - flexibility
+  -+ Random forests - flexibility
   
-  + Principle component analysis
+  -+ Principle component analysis
 
 - More OpenET applications!
 
-  + Other fires - more training needed
+  -+ Other fires - more training needed
 
   + Other disturbances - bark beetles
 

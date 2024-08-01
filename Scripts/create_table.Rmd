@@ -207,14 +207,6 @@ data_table <- data.table(
   soil_moisture = soil_moisture_values[, "soil_moisture"] 
 )
 
-
-hist(data_table_cleaned[data_table_cleaned$within_burn_area == FALSE]$dnbr)
-hist(data_table_cleaned[data_table_cleaned$within_burn_area == TRUE]$dnbr)
-
-hist(data_table_cleaned[data_table_cleaned$within_burn_area == FALSE]$prefire_nbr)
-hist(data_table_cleaned[data_table_cleaned$within_burn_area == TRUE]$prefire_nbr)
-
-hist(data_table_cleaned$prefire_ndvi)
 # remove rows without HUC12 since those aren't in the area of interest
 data_table_cleaned <- data_table[!is.na(data_table$huc12)]
 
@@ -223,13 +215,17 @@ data_table_cleaned <- data_table[!is.na(data_table$huc12)]
 # but outside the creekfire burn area
 data_table_cleaned[is.na(data_table_cleaned$within_burn_area)]$within_burn_area <- FALSE
 
-# git rid of the remaining rows with missing values
+# get rid of remaining rows with missing values
 data_table_cleaned <- na.omit(data_table_cleaned)
 
-# Save or inspect the data.table
-write.csv(data_table_cleaned, "Data/big_table.csv", row.names = FALSE)
+# save results
+write.csv(data_table_cleaned, paste0(wd,"/Data/big_table.csv"), row.names = FALSE)
 
+hist(data_table_cleaned[data_table_cleaned$within_burn_area == FALSE]$dnbr)
+hist(data_table_cleaned[data_table_cleaned$within_burn_area == TRUE]$dnbr)
 
+hist(data_table_cleaned[data_table_cleaned$within_burn_area == FALSE]$prefire_nbr)
+hist(data_table_cleaned[data_table_cleaned$within_burn_area == TRUE]$prefire_nbr)
 ```
 
 

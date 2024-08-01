@@ -38,44 +38,37 @@ registerDoParallel(cl)
 ```
 
 ```{r}
-df <- vroom::vroom("model_df.csv")
+df <- vroom::vroom("model_df_outliers_removed.csv")
 ```
 
 ```{r}
-predictors <- c("prefire_ndvi","dnbr","elev","slope","aspect",
-                   "north","lat","temp","precip")
+predictors <- c("lat","lon","prefire_ndvi","dndvi","dnbr","temp","precip",
+                "elev","aspect","slope","north","soil_moisture")
+
+base_formula <- as.formula(paste("rET ~", paste(predictors, collapse = " + ")))
 ```
 
 ```{r}
 # start with a basic MLR model
-lm_rET <- lm(rET ~ prefire_ndvi + dnbr + elev + slope + aspect + north +
-               lat + temp + precip, data = df)
+lm_rET <- lm(base_formula, data = df)
 
 summary.lm_rET <- summary(lm_rET)
 summary.lm_rET 
 
-save(lm_rET, file = paste0(outDir, "/lm_rET.rds"))
+save(lm_rET, file = paste0(outDir, "/lm_rET.RData"))
 ```
 
 
 ```{r}
-cor_matrix <- cor(df[predictors], use = "complete.obs")
-cor_matrix
-
-# Generate two-way interactions
+# generate two-way interactions
 two_way_interactions <- combn(predictors, 2, function(x) paste(x, collapse = ":"))
 
-# Print two-way interactions
-two_way_interactions
-
-# Only grab the ones of interest... otherwise it would take too long :(
+# all terms == huge ass model
 all_terms <- c(predictors,two_way_interactions)
 
-# Create the formula
+# create the formula
 interaction_formula <- as.formula(paste("rET ~", paste(all_terms, collapse = " + ")))
 
-# Print the formula
-interaction_formula
 ```
 
 ```{r}
@@ -85,9 +78,9 @@ lm_rET_interaction <- lm(interaction_formula, data = df)
 summary.lm_rET_interaction <- summary(lm_rET_interaction)
 summary.lm_rET_interaction
 
-save(lm_rET_interaction, file = paste0(outDir,"/lm_rET_interaction.rds"))
+save(lm_rET_interaction, file = paste0(outDir,"/lm_rET_interaction.RData"))
 
-# so some of these aren't helpful; do model selection
+# some of these aren't helpful; do model selection
 ```
 
 
@@ -96,6 +89,7 @@ save(lm_rET_interaction, file = paste0(outDir,"/lm_rET_interaction.rds"))
 ```{r}
 library(leaps)
 
+# set up function to combine CV and best subset selection
 set.seed(0)
 
 k <- 10
@@ -124,16 +118,7 @@ for (j in 1:k) {
   test_data <- df[folds == j, ]
   
   # Fit the regsubsets model on the training data
-  best.fit <- regsubsets(rET ~ prefire_ndvi + dnbr + elev + slope + aspect + north + lat + 
-    temp + precip + prefire_ndvi:dnbr + prefire_ndvi:elev + prefire_ndvi:slope + 
-    prefire_ndvi:aspect + prefire_ndvi:north + prefire_ndvi:lat + 
-    prefire_ndvi:temp + prefire_ndvi:precip + dnbr:elev + dnbr:slope + 
-    dnbr:aspect + dnbr:north + dnbr:lat + dnbr:temp + dnbr:precip + 
-    elev:slope + elev:aspect + elev:north + elev:lat + elev:temp + 
-    elev:precip + slope:aspect + slope:north + slope:lat + slope:temp + 
-    slope:precip + aspect:north + aspect:lat + aspect:temp + 
-    aspect:precip + north:lat + north:temp + north:precip + lat:temp + 
-    lat:precip + temp:precip, data = train_data, nvmax = 10)
+  best.fit <- regsubsets(as.formula(interaction_formula), data = train_data, nvmax = 10, method="forward")
   
   for (i in 1:10) {
     pred <- predict.regsubsets(best.fit, newdata = test_data, id = i)
@@ -144,41 +129,36 @@ for (j in 1:k) {
 # Calculate average CV error for each model size
 mean_cv_errors <- apply(cv.errors, 2, mean)
 
-# Print results
-print(mean_cv_errors)
-
-```
-
-```{r}
-# result: 10x10 matrix where [j,i]th element is test MSE for the jth CV fold for the best i-variable model
-cv.errors
-
-mean.cv.errors <- apply(cv.errors, 2, mean)
-mean.cv.errors
-
 # plot that shit
-plot(mean.cv.errors, type="b")
+plot(mean_cv_errors, type="b")
+# wow, for real??
 
-best_model_size <- which.min(mean.cv.errors)
+# best model size according to this
+best_model_size <- which.min(mean_cv_errors)
+
 ```
+
+
 
 ```{r}
 # welp
-# now try the full model
-
+# now do best subset selection once
 lm_rET_best_subset <- regsubsets(interaction_formula,
-           data=df, nvmax = 10)
+           data=df, nvmax = 10, method="forward")
 
 lm_rET_best_subset.summary <- summary(lm_rET_best_subset)
 
 lm_rET_best_subset.summary
 
 final_coefs <- coef(lm_rET_best_subset, id = best_model_size) # best model size
-print(final_coefs)
+lm_rET_interaction_reduced_predictors <- names(final_coefs)[-1] # omit the intercept
+
+
 ```
 
 ```{r}
 # final model
+lm_rET_interaction_reduced_formula <- as.formula(paste("rET ~", paste(lm_rET_interaction_reduced_predictors, collapse = " + ")))
 
 lm_rET_interaction_reduced <- lm(rET ~ dnbr + lat + precip + prefire_ndvi:dnbr + elev:dnbr +
                      lat:dnbr + lat:precip, data=df)
@@ -186,51 +166,44 @@ lm_rET_interaction_reduced <- lm(rET ~ dnbr + lat + precip + prefire_ndvi:dnbr +
 lm_rET_interaction_reduced.summary <- summary(lm_rET_interaction_reduced)
 lm_rET_interaction_reduced.summary
 
-save(lm_rET_interaction_reduced, file = paste0(outDir, "/lm_rET_interaction_reduced.rds"))
+save(lm_rET_interaction_reduced, file = paste0(outDir, "/lm_rET_interaction_reduced.RData"))
 ```
 
 Try lasso if time:
 ```{r}
-library(glmnet)
-
-# prep data
-response <- df$rET
-predictors <- model.matrix(interaction_formula, data = df)[,-1]
-
-# # standardize predictors... 10000 deaths
-# predictors <- scale(predictors)
-
-# Cross-validation to find the best lambda
-set.seed(0)
-lasso_rET_cv <- cv.glmnet(predictors, response, alpha = 1, nfolds = 10)  # alpha = 1 for Lasso, 0 for Ridge
-ridge_rET_cv <- cv.glmnet(predictors, response, alpha = 0, nfolds = 10)
-
-# Get the best lambda
-lasso_rET_best_lambda <- lasso_rET_cv$lambda.min
-ridge_rET_best_lambda <- ridge_rET_cv$lambda.min
-
-# Fit the final model with the best lambda
-lasso_rET_final <- glmnet(predictors, response, alpha = 1, lambda = lasso_rET_best_lambda)
-ridge_rET_final <- glmnet(predictors, response, alpha = 0, lambda = ridge_rET_best_lambda)
-
-# Print the coefficients of the final model
-print(coef(lasso_rET_final))
-print(coef(ridge_rET_final))
-
-# Plot the cross-validation results
-plot(lasso_rET_cv)
-plot(ridge_rET_cv)
-
-save(lasso_rET_final, file=paste0(outDir,"/lasso_rET_final.rds"))
-save(ridge_rET_final, file=paste0(outDir,"/ridge_rET_final.rds"))
+# library(glmnet)
+# 
+# # prep data
+# response <- df$rET
+# predictors <- model.matrix(interaction_formula, data = df)[,-1]
+# 
+# # # standardize predictors... 10000 deaths
+# # predictors <- scale(predictors)
+# 
+# # Cross-validation to find the best lambda
+# set.seed(0)
+# lasso_rET_cv <- cv.glmnet(predictors, response, alpha = 1, nfolds = 10)  # alpha = 1 for Lasso, 0 for Ridge
+# ridge_rET_cv <- cv.glmnet(predictors, response, alpha = 0, nfolds = 10)
+# 
+# # Get the best lambda
+# lasso_rET_best_lambda <- lasso_rET_cv$lambda.min
+# ridge_rET_best_lambda <- ridge_rET_cv$lambda.min
+# 
+# # Fit the final model with the best lambda
+# lasso_rET_final <- glmnet(predictors, response, alpha = 1, lambda = lasso_rET_best_lambda)
+# ridge_rET_final <- glmnet(predictors, response, alpha = 0, lambda = ridge_rET_best_lambda)
+# 
+# # Print the coefficients of the final model
+# print(coef(lasso_rET_final))
+# print(coef(ridge_rET_final))
+# 
+# # Plot the cross-validation results
+# plot(lasso_rET_cv)
+# plot(ridge_rET_cv)
+# 
+# save(lasso_rET_final, file=paste0(outDir,"/lasso_rET_final.rds"))
+# save(ridge_rET_final, file=paste0(outDir,"/ridge_rET_final.rds"))
 ```
-
-
-
-```{r}
-# save the fitted values 
-```
-
 
 
 ```{r}
