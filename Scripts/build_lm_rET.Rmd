@@ -29,7 +29,7 @@ invisible(lapply(packages, library, character.only = TRUE))
 
 ```{r}
 wd <- rprojroot::find_rstudio_root_file()
-outDir <- file.path(wd, "Data", fsep="/")
+outDir <- file.path(wd, "Models", fsep="/")
 suppressWarnings(dir.create(outDir)) 
 
 num_cores <- detectCores() - 1
@@ -54,7 +54,7 @@ lm_rET <- lm(rET ~ prefire_ndvi + dnbr + elev + slope + aspect + north +
 summary.lm_rET <- summary(lm_rET)
 summary.lm_rET 
 
-save(lm_rET, file = "lm_rET.RData")
+save(lm_rET, file = paste0(outDir, "/lm_rET.rds"))
 ```
 
 
@@ -85,7 +85,7 @@ lm_rET_interaction <- lm(interaction_formula, data = df)
 summary.lm_rET_interaction <- summary(lm_rET_interaction)
 summary.lm_rET_interaction
 
-save(lm_rET_interaction, file = "lm_rET_interaction.RData")
+save(lm_rET_interaction, file = paste0(outDir,"/lm_rET_interaction.rds"))
 
 # so some of these aren't helpful; do model selection
 ```
@@ -180,13 +180,13 @@ print(final_coefs)
 ```{r}
 # final model
 
-lm_rET_final <- lm(rET ~ dnbr + lat + precip + prefire_ndvi:dnbr + elev:dnbr +
+lm_rET_interaction_reduced <- lm(rET ~ dnbr + lat + precip + prefire_ndvi:dnbr + elev:dnbr +
                      lat:dnbr + lat:precip, data=df)
 
-lm_rET_final.summary <- summary(lm_rET_final)
-lm_rET_final.summary
+lm_rET_interaction_reduced.summary <- summary(lm_rET_interaction_reduced)
+lm_rET_interaction_reduced.summary
 
-save(lm_rET_final, file = "lm_rET_interaction7.RData")
+save(lm_rET_interaction_reduced, file = paste0(outDir, "/lm_rET_interaction_reduced.rds"))
 ```
 
 Try lasso if time:
@@ -197,37 +197,39 @@ library(glmnet)
 response <- df$rET
 predictors <- model.matrix(interaction_formula, data = df)[,-1]
 
-# standardize predictors... 10000 deaths
-predictors <- scale(predictors)
+# # standardize predictors... 10000 deaths
+# predictors <- scale(predictors)
 
 # Cross-validation to find the best lambda
 set.seed(0)
-cv_fit <- cv.glmnet(predictors, response, alpha = 1, nfolds = 10)  # alpha = 1 for Lasso, 0 for Ridge
+lasso_rET_cv <- cv.glmnet(predictors, response, alpha = 1, nfolds = 10)  # alpha = 1 for Lasso, 0 for Ridge
+ridge_rET_cv <- cv.glmnet(predictors, response, alpha = 0, nfolds = 10)
 
 # Get the best lambda
-best_lambda <- cv_fit$lambda.min
+lasso_rET_best_lambda <- lasso_rET_cv$lambda.min
+ridge_rET_best_lambda <- ridge_rET_cv$lambda.min
 
 # Fit the final model with the best lambda
-final_model <- glmnet(predictors, response, alpha = 1, lambda = best_lambda)
+lasso_rET_final <- glmnet(predictors, response, alpha = 1, lambda = lasso_rET_best_lambda)
+ridge_rET_final <- glmnet(predictors, response, alpha = 0, lambda = ridge_rET_best_lambda)
 
 # Print the coefficients of the final model
-print(coef(final_model))
+print(coef(lasso_rET_final))
+print(coef(ridge_rET_final))
 
 # Plot the cross-validation results
-plot(cv_fit)
+plot(lasso_rET_cv)
+plot(ridge_rET_cv)
 
-
-print("MLR Coefficients:")
-print(coef(lm_rET_interaction))
-
-print("Lasso Coefficients:")
-print(coef(final_model))
-
-save(final_model, file="lasso_rET.RData")
+save(lasso_rET_final, file=paste0(outDir,"/lasso_rET_final.rds"))
+save(ridge_rET_final, file=paste0(outDir,"/ridge_rET_final.rds"))
 ```
 
 
 
+```{r}
+# save the fitted values 
+```
 
 
 

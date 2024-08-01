@@ -1,6 +1,7 @@
 ---
-title: "Describing Evapotranspiration Reduction following Wildfire"
+title: "Describing Evapotranspiration Reduction following the 2020 Creek Fire in the southern Sierra Nevada"
 author: "Carrie Hashimoto"
+date: "2024-08-01"
 institution: "Rice University"
 format:
   beamer:
@@ -8,90 +9,110 @@ format:
     header-includes: |
        \setbeamertemplate{navigation symbols}{}
        \setbeamertemplate{footline}[page number]
+       \usepackage{amsmath}
+       \usepackage{graphicx}
 ---
 
 # Motivation: wildfire trends
 <!-- introduction - motivation -->
 
-- From 2000 to 2017, the area of the Sierra Nevada that has been burned has been 78% higher than in the preceding 15 years (x)
+\begin{minipage}{0.4\linewidth}
+\scriptsize % Make the text smaller
 
-- Climate warming
+\begin{itemize}
+  \item Climate warming
+  \begin{itemize}
+    \item Longer fire season
+    \item Hotter/drier summers
+    \item Earlier snowmelt
+  \end{itemize}
+  \item Forest management and tree density
+\end{itemize}
 
--- longer fire season, hotter/drier summers, earlier snowmelt
+\end{minipage}
+\hfill
+\begin{minipage}{0.55\linewidth}
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/calfire_incident_map.png}
+\end{minipage}
 
-- 20th century forest management and tree density
+\vspace{0.5em}
+\small (CalFire, 2024)
 
 <!-- introduction - background -->
-# Background: Creek Fire
-- 2020-09-04 through 2020-12-24
-- 380,000 acres burned \[x\]
+# The Creek Fire, 2020
 
-# Background: Creek Fire
-<!-- \includegraphics[width=\textwidth]{/Users/Carrie/Desktop/creekfire/Figures/CreekFireBurnArea.png} -->
+\begin{columns}[T] 
+  \begin{column}{0.5\textwidth} 
+    \vspace{0.5em}
+    \scriptsize 
+    \begin{itemize}
+      \item 2020-09-04 through 2020-12-24
+      \item 380,000 acres burned
+    \end{itemize}
+  \end{column}
 
+  \begin{column}{0.5\textwidth} 
+    \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/HUC12_plot.png}
+  \end{column}
+  
+\end{columns}
 
-![](/Users/Carrie/Desktop/creekfire/Figures/CreekFireBurnArea.png){fig-align="center" width="80%"}
-
+\vspace{0.5em}
+\small (CalFire, 2024)
 
 <!-- introduction - data -->
-# Data: OpenET, HLS, SRTM, NLDAS, TerraClimate
+# Selected data sources
 
--- OpenET: 30 m res aggregate of 6 other models
+\begin{minipage}{\linewidth}
+\scriptsize 
+\begin{itemize}
+  \item OpenET: 30 m res aggregate of 6 models
+\end{itemize}
+\end{minipage}
 
--- HLS: 30 m spectral data
+\vspace{1em}
 
-- use to calculate NDVI and NBR
+\begin{minipage}{\linewidth}
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/ex_et_ts_plot.png}
+\end{minipage}
+<!-- - HLS: 30 m spectral data -->
 
--- SRTM: 2000 elevation data
+<!--   + use to calculate NDVI and NBR -->
 
-- derive slope and aspect
+<!-- - SRTM: 2000 elevation -->
 
--- NLDAS: 12 km temperature data
+<!--   + derive slope, aspect, northness -->
 
-<!-- - *is this modeled?* -->
+<!-- - NLDAS: 12 km temperature -->
 
--- TerraClimate: 4 km precipitation and soil moisture data
+<!-- - TerraClimate: 4 km precipitation and soil moisture -->
 
-<!-- - *is this modeled?* -->
-<!-- -   30 m resolution vs XX for flux towers or XX for satellite observations -->
+# Evapotranspiration (ET)
 
-<!-- methods 1 -->
-
-# Background: ET Change
-
-![](/Users/Carrie/Desktop/creekfire/Figures/prefire_ET.png){fig-align="center" width="80%"}
-
-
-# Background: ET Change
-
-![](/Users/Carrie/Desktop/creekfire/Figures/postfire_ET.png){fig-align="center" width="80%"}
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/prefire_et_plot.png}
 
 
-# Methods: MLR
+# Post-Creek Fire ET change
 
-- Multiple linear regression
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/postfire_et_plot.png}
 
-- Best subset model selection
 
-- RSS, adj. $R^2$, Cp, BIC
+# That's pretty striking...
 
-$$
-E[y \mid \mathbf{x}] = \beta_0 + \beta_1 x_{1} + ... + \beta_p x_{p} + \epsilon
-$$
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/prefire_postfire_et_plots.png}
 
-<!-- methods 2 -->
 
-# Methods: GAM
+<!-- # Look at the difference! -->
 
-- Generalized additive model
+<!-- \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/diff_et_plot.png} -->
 
-$$
-g(E[y \mid \mathbf{x}]) = \beta_0 + f_1(x_{1}) + f_2(x_{2}) + \cdots + f_p(x_{p}) + \epsilon
-$$
+# What kind of patterns are present?
 
-# Methods: aET and rET
+\includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/diff_et_vs_dnbr.png}
 
-- absolute evapotranspiration
+# Creating the response variable
+
+- absolute and relative evapotranspiration
 
 \begin{align*}
 aET &= (ET_{\text{burned,prefire}} - ET_{\text{burned,postfire}}) \\
@@ -103,28 +124,121 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 
 <!-- # methods 5 -->
 
-# Results: aET MLR without interaction
-\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm4selection.png}
+<!-- \includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/scatter_matrix.png} -->
 
-# Results: aET MLR without interaction
 
-\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm4summary.png}
+# Choosing covariates - initial MLR
 
-# Results: aET MLR without interaction
+- Guided by Ma et. al., 2020
+\begin{align*}
+\text{rET} &= \beta_0 + \beta_1 \cdot \text{pre-fire NDVI} + \beta_2 \cdot \text{dNBR} + \beta_3 \cdot \text{elevation}  \\
+&\quad + \beta_4 \cdot \text{slope} + \beta_5 \cdot \text{aspect} \\
+&\quad + \beta_6 \cdot \text{northness} + \beta_7 \cdot \text{latitude} \\
+&\quad + \beta_8 \cdot \text{temperature} + \beta_9 \cdot \text{precipitation} + \epsilon \\
+&\text{adjusted } R^2 = 0.5686 \\
+\end{align*}
 
-\includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot1.png}
+<!-- # Initial MLR -->
 
-# Results: aET MLR without interaction
+<!-- \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/response_fitted_values_lm_rET_plots.png} -->
+<!-- \begin{minipage}{0.2\linewidth} -->
+<!-- \scriptsize % Make the text smaller -->
+<!-- \begin{align*} -->
+<!-- \text{rET} &= \beta_0 + \beta_1 \cdot \text{pre-fire NDVI} + \beta_2 \cdot \text{dnbr} + \beta_3 \cdot \text{elevation}  \\ -->
+<!-- &\quad + \beta_4 \cdot \text{slope} + \beta_5 \cdot \text{aspect} \\ -->
+<!-- &\quad + \beta_6 \cdot \text{northness} + \beta_7 \cdot \text{latitude} \\ -->
+<!-- &\quad + \beta_8 \cdot \text{temperature} + \beta_9 \cdot \text{precipitation} + \epsilon \\ -->
+<!-- \text{adjusted } R^2 &= 0.5686 \\ -->
+<!-- \end{align*} -->
+<!-- \end{minipage} -->
+<!-- \hfill -->
+<!-- \begin{minipage}{0.75\linewidth} -->
+<!-- \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/response_fitted_values_lm_rET_plots.png} -->
+<!-- \end{minipage} -->
+<!-- # MLR with allllll the interactions -->
 
-\includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot2.png}
+<!-- \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/response_fitted_values_lm_rET_interaction_plots.png} -->
 
-# Results: aET MLR without interaction
+# Best subset selection with cross-validation
 
-\includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot3.png}
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm_rET_cv.png}
 
-# Results: aET MLR without interaction
+# MLR reduced model with interactions
 
-\includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/plot4.png}
+<!-- \begin{minipage}{0.2\linewidth} -->
+<!-- \scriptsize % Make the text smaller -->
+\begin{align*}
+\text{rET} &= \beta_0 + \beta_1 \cdot \text{dNBR} + \beta_2 \cdot \text{latitude} \\
+&\quad + \beta_3 \cdot \text{precipitation} + \beta_4 \cdot (\text{pre-fire NDVI} \cdot \text{dNBR}) \\
+&\quad + \beta_5 \cdot (\text{elevation} \cdot \text{dNBR}) + \beta_6 \cdot (\text{latitude} \cdot \text{dNBR}) \\
+&\quad + \beta_7 \cdot (\text{latitude} \cdot \text{precipitation}) + \epsilon \\
+&\text{adjusted } R^2 = 0.6261 \\
+\end{align*}
+<!-- \end{minipage} -->
+<!-- \hfill -->
+
+# Observed rET compared with MLR reduced model
+<!-- \begin{minipage}{0.75\linewidth} -->
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/response_fitted_values_lm_rET_interaction_reduced_plots.png}
+<!-- \end{minipage} -->
+
+# GAMs - more computational cost
+
+<!-- \begin{minipage}{0.2\linewidth} -->
+<!-- \scriptsize % Make the text smaller -->
+\begin{align*}
+\text{rET} &= \beta_0 + s_1(\text{pre-fire NDVI}) + s_2(\text{dNBR}) \\
+&\quad + s_3(\text{elevation}) + s_4(\text{slope}) \\
+&\quad + s_5(\text{aspect}) + s_6(\text{northness})\\
+&\quad + s_7(\text{latitude}) + s_8(\text{temperature}) \\
+&\quad + s_9(\text{precipitation}) + \epsilon \\
+&\text{adjusted } R^2 = 0.675 \\
+\end{align*}
+
+# Adding complexity - spline example 
+
+\includegraphics[width=0.7\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/example_spline2.png}
+
+<!-- \end{minipage} -->
+<!-- \hfill -->
+
+<!-- # Initial GAM -->
+<!-- <!-- \begin{minipage}{0.75\linewidth} --> 
+<!-- \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/response_fitted_values_bam_rET_plots.png} -->
+<!-- \end{minipage} -->
+
+# GAM reduced model
+<!-- \begin{minipage}{0.2\linewidth} -->
+<!-- \scriptsize % Make the text smaller -->
+\begin{align*}
+\text{rET} &= \beta_0 + s_1(\text{dnbr}) + s_2(\text{lat}) + s_3(\text{precip}) \\
+&\quad + te(\text{pre-fire NDVI}, \text{dNBR}) \\
+&\quad + te(\text{elevation}, \text{dNBR}) \\
+&\quad + te(\text{latitude}, \text{dNBR}) \\
+&\quad + te(\text{latitude}, \text{precipitation}) + \epsilon \\
+&\text{adjusted } R^2 = 0.695 \\
+\end{align*}
+<!-- \end{minipage} -->
+<!-- \hfill -->
+
+# GAM reduced model performance
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/bam_rET_interaction_reduced_qq.png}
+- That's not normal...
+
+# GAM reduced model performance
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/bam_rET_interaction_reduced_resids.png}
+- Apparent patterns are bad
+
+# GAM reduced model performance
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/bam_rET_interaction_reduced_fitted_response.png}
+- At least that's OK
+
+# Visualizing the reduced GAM's performance
+<!-- \begin{minipage}{0.75\linewidth} -->
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/response_fitted_values_bam_rET_interaction_plots.png}
+<!-- \end{minipage} -->
+
+<!-- # Performance metrics -->
 
 <!-- # Results: rET MLR with interaction -->
 
@@ -136,6 +250,8 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 <!--     \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm_rET_cv_errors.png} -->
 <!--   \end{column} -->
 <!-- \end{columns} -->
+
+
 
 
 <!-- # Results: rET MLR with interaction -->
@@ -156,20 +272,9 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 <!--   \end{column} -->
 <!-- \end{columns} -->
 
+# Response vs MLR vs GLM
 
-
-
-# Results: GAM
-
-\includegraphics[width=0.7\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/bamfullsummary.png}
-
-# Results: GAM
-
-\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/bamfullcheck.png}
-
-# Results: GAM
-
-\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/bamfullcheck2.png}
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/final_comparison_plots.png}
 
 # Conclusions
 
@@ -181,13 +286,19 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 
 # Future Work
 
--- rET may contain more meaning
+- GAM model selection
 
--- GAMs: alternative link functions and smooths
+- Alternative models
 
-- Isotropic vs scale invariant
+  + Random forests - flexibility
+  
+  + Principle component analysis
 
-- Model usefulness: application to other fires
+- More OpenET applications!
+
+  + Other fires - more training needed
+
+  + Other disturbances - bark beetles
 
 <!-- -- Other predictors -->
 
@@ -198,4 +309,6 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 <!-- - Higher res. precip, temp, soil moisture -->
 
 
+- accounting for interactions improves the model
 
+- that's not normal...

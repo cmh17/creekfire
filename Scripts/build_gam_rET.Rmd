@@ -28,7 +28,7 @@ invisible(lapply(packages, library, character.only = TRUE))
 
 ```{r}
 wd <- rprojroot::find_rstudio_root_file()
-outDir <- file.path(wd, "Data", fsep="/")
+outDir <- file.path(wd, "Models", fsep="/")
 suppressWarnings(dir.create(outDir)) 
 
 num_cores <- detectCores() - 1
@@ -72,7 +72,7 @@ bam_rET.summary <- summary(bam_rET)
 bam_rET.summary
 
 # check model diagnostics
-gam.check(bam_rET) 
+save(bam_rET, file = paste0(outDir, "/bam_rET.rds"))
 ```
 
 
@@ -81,17 +81,18 @@ gam.check(bam_rET)
 # first use all predictors, no interaction terms
 
 # fit the model using bam and variables of interest from lm
-bam_rET_interaction <- mgcv::bam(rET ~ te(dnbr) + te(lat) + te(precip) + 
-                                   ti(prefire_ndvi,dnbr) + ti(elev,dnbr) + 
-                                   ti(lat,dnbr) + ti(lat,precip),
+bam_rET_interaction <- mgcv::bam(rET ~ s(dnbr) + s(lat) + s(precip) + 
+                                   te(prefire_ndvi,dnbr, bs="ps") + te(elev,dnbr, bs="ps") + 
+                                   te(lat,dnbr, bs="ps") + te(lat,precip, bs="ps"),
                      data = df, method = "fREML")
 
 bam_rET_interaction.summary <- summary(bam_rET_interaction)
 bam_rET_interaction.summary
+
 # check model diagnostics
 gam.check(bam_rET_interaction) 
 
-save(bam_rET_interaction, file="bam_rET_interaction_reduced.RData")
+save(bam_rET_interaction, file=paste0(outDir,"/bam_rET_interaction_reduced.rds"))
 ```
 
 
