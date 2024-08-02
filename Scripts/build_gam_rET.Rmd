@@ -37,23 +37,15 @@ registerDoParallel(cl)
 ```
 
 ```{r}
-df <- vroom::vroom("model_df.csv")
-head(df)
-
-# get a subset for visualization later
-set.seed(0)
-
-k <- 1000
-n <- nrow(df)
-
-folds <- sample(rep(1:k, length = n))
-
-df_fold1 <- df[folds == 1,]
+df <- vroom::vroom("model_df_outliers_removed.csv")
+# sigh...
 ```
 
 ```{r}
-predictors <- c("prefire_ndvi","dnbr","elev","slope","aspect",
-                   "north","lat","temp","precip")
+predictors <- c("lat","lon","prefire_ndvi","dndvi","dnbr","temp","precip",
+                "elev","aspect","slope","north","soil_moisture")
+
+base_formula <- as.formula(paste("rET ~", paste(predictors, collapse = " + ")))
 ```
 
 ```{r}
@@ -72,7 +64,7 @@ bam_rET.summary <- summary(bam_rET)
 bam_rET.summary
 
 # check model diagnostics
-save(bam_rET, file = paste0(outDir, "/bam_rET.rds"))
+save(bam_rET, file = paste0(outDir, "/bam_rET.RData"))
 ```
 
 
@@ -81,18 +73,18 @@ save(bam_rET, file = paste0(outDir, "/bam_rET.rds"))
 # first use all predictors, no interaction terms
 
 # fit the model using bam and variables of interest from lm
-bam_rET_interaction <- mgcv::bam(rET ~ s(dnbr) + s(lat) + s(precip) + 
+bam_rET_interaction_reduced <- mgcv::bam(rET ~ s(dnbr) + s(lat) + s(precip) + 
                                    te(prefire_ndvi,dnbr, bs="ps") + te(elev,dnbr, bs="ps") + 
                                    te(lat,dnbr, bs="ps") + te(lat,precip, bs="ps"),
                      data = df, method = "fREML")
 
-bam_rET_interaction.summary <- summary(bam_rET_interaction)
-bam_rET_interaction.summary
+bam_rET_interaction_reduced.summary <- summary(bam_rET_interaction_reduced)
+bam_rET_interaction_reduced.summary
 
 # check model diagnostics
-gam.check(bam_rET_interaction) 
+gam.check(bam_rET_interaction_reduced) 
 
-save(bam_rET_interaction, file=paste0(outDir,"/bam_rET_interaction_reduced.rds"))
+save(bam_rET_interaction_reduced, file=paste0(outDir,"/bam_rET_interaction_reduced.rds"))
 ```
 
 

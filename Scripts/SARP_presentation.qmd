@@ -165,6 +165,7 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 
 # MLR reduced model with interactions
 
+- accounting for interactions improves the model
 <!-- \begin{minipage}{0.2\linewidth} -->
 <!-- \scriptsize % Make the text smaller -->
 \begin{align*}
@@ -300,7 +301,7 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 
   -+ Other fires - more training needed
 
-  + Other disturbances - bark beetles
+  -+ Other disturbances - bark beetles
 
 <!-- -- Other predictors -->
 
@@ -309,8 +310,3 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 <!-- -- Alternative link functions -->
 
 <!-- - Higher res. precip, temp, soil moisture -->
-
-
-- accounting for interactions improves the model
-
-- that's not normal...

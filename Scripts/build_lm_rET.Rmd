@@ -39,6 +39,7 @@ registerDoParallel(cl)
 
 ```{r}
 df <- vroom::vroom("model_df_outliers_removed.csv")
+names(df)
 ```
 
 ```{r}
