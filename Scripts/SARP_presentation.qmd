@@ -52,7 +52,7 @@ format:
   \end{column}
 
   \begin{column}{0.5\textwidth} 
-    \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/HUC12_plot.png}
+    \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/study_area_plot.png}
   \end{column}
   
 \end{columns}
@@ -114,6 +114,8 @@ format:
 
 - absolute and relative evapotranspiration
 
+- bigger rET \rightarrow more change compared to control
+
 \begin{align*}
 aET &= (ET_{\text{burned,prefire}} - ET_{\text{burned,postfire}}) \\
     &\quad - (ET_{\text{control,prefire}} - ET_{\text{control,postfire}}) \\
@@ -127,16 +129,16 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 <!-- \includegraphics[width=0.8\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/scatter_matrix.png} -->
 
 
-# Choosing covariates - initial MLR
+<!-- # Choosing covariates - initial MLR -->
 
-- Use it all! no interactions
-\begin{align*}
-\text{rET} &= \beta_0 + \beta_1 \cdot \text{pre-fire NDVI} + \beta_2 \cdot \text{dNBR} + \beta_3 \cdot \text{elevation}  \\
-&\quad + \beta_4 \cdot \text{slope} + \beta_5 \cdot \text{aspect} \\
-&\quad + \beta_6 \cdot \text{northness} + \beta_7 \cdot \text{latitude} \\
-&\quad + \beta_8 \cdot \text{temperature} + \beta_9 \cdot \text{precipitation} + \epsilon \\
-&\text{adjusted } R^2 = 0.5686 \\
-\end{align*}
+<!-- - Use it all! no interactions -->
+<!-- \begin{align*} -->
+<!-- \text{rET} &= \beta_0 + \beta_1 \cdot \text{pre-fire NDVI} + \beta_2 \cdot \text{dNBR} + \beta_3 \cdot \text{elevation}  \\ -->
+<!-- &\quad + \beta_4 \cdot \text{slope} + \beta_5 \cdot \text{aspect} \\ -->
+<!-- &\quad + \beta_6 \cdot \text{northness} + \beta_7 \cdot \text{latitude} \\ -->
+<!-- &\quad + \beta_8 \cdot \text{temperature} + \beta_9 \cdot \text{precipitation} + \epsilon \\ -->
+<!-- &\text{adjusted } R^2 = 0.5686 \\ -->
+<!-- \end{align*} -->
 
 <!-- # Initial MLR -->
 
@@ -159,49 +161,54 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 
 <!-- \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/response_fitted_values_lm_rET_interaction_plots.png} -->
 
-# Best subset selection with cross-validation
-
-\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm_rET_cv.png}
 
 # MLR reduced model with interactions
 
 - accounting for interactions improves the model
-<!-- \begin{minipage}{0.2\linewidth} -->
-<!-- \scriptsize % Make the text smaller -->
+  + adjusted $R^2 = 0.6969$
+- but a model with all interactions has 78 coefficients...
+
+\begin{minipage}{0.3\linewidth}
+\scriptsize 
 \begin{align*}
-\text{rET} &= \beta_0 + \beta_1 \cdot \text{dNBR} + \beta_2 \cdot \text{latitude} \\
-&\quad + \beta_3 \cdot \text{precipitation} + \beta_4 \cdot (\text{pre-fire NDVI} \cdot \text{dNBR}) \\
-&\quad + \beta_5 \cdot (\text{elevation} \cdot \text{dNBR}) + \beta_6 \cdot (\text{latitude} \cdot \text{dNBR}) \\
-&\quad + \beta_7 \cdot (\text{latitude} \cdot \text{precipitation}) + \epsilon \\
-&\text{adjusted } R^2 = 0.6261 \\
+\text{rET} &= \beta_0 + \beta_1 \cdot \text{dNBR} + \beta_2 \cdot (\text{pre-fire NDVI} \cdot \text{dNBR}) \\
+&\quad + \beta_3 \cdot (\text{soil moisture} \cdot \text{dNBR}) \\
+&\quad + \epsilon \\
+&\text{adjusted } R^2 = 0.6181 \\
 \end{align*}
-<!-- \end{minipage} -->
-<!-- \hfill -->
+\end{minipage}
+\hfill
+
+\begin{minipage}{0.65\linewidth}
+Best subset selection with cross-validation
+\includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/lm_rET_interaction_cv.png}
+\end{minipage}
 
 # Observed rET compared with MLR reduced model
 <!-- \begin{minipage}{0.75\linewidth} -->
 \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/response_fitted_values_lm_rET_interaction_reduced_plots.png}
 <!-- \end{minipage} -->
 
-# GAMs - more computational cost
+# GAMs - higher complexity, higher computational cost
 
-<!-- \begin{minipage}{0.2\linewidth} -->
-<!-- \scriptsize % Make the text smaller -->
+\begin{minipage}{0.3\linewidth}
+\scriptsize % Make the text smaller
 \begin{align*}
 \text{rET} &= \beta_0 + s_1(\text{pre-fire NDVI}) + s_2(\text{dNBR}) \\
 &\quad + s_3(\text{elevation}) + s_4(\text{slope}) \\
 &\quad + s_5(\text{aspect}) + s_6(\text{northness})\\
 &\quad + s_7(\text{latitude}) + s_8(\text{temperature}) \\
 &\quad + s_9(\text{precipitation}) + \epsilon \\
-&\text{adjusted } R^2 = 0.675 \\
+&\text{adjusted } R^2 = 0.699 \\
 \end{align*}
+\end{minipage}
+\hfill
+\begin{minipage}{0.65\linewidth}
 
-# Adding complexity - spline example 
-
+Adding complexity with smooths
 \includegraphics[width=0.7\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/example_spline2.png}
+\end{minipage}
 
-<!-- \end{minipage} -->
-<!-- \hfill -->
 
 <!-- # Initial GAM -->
 <!-- <!-- \begin{minipage}{0.75\linewidth} --> 
@@ -211,13 +218,12 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 # GAM reduced model
 <!-- \begin{minipage}{0.2\linewidth} -->
 <!-- \scriptsize % Make the text smaller -->
+- Can we reduce the number of covariates while retaining descriptive power?
+
 \begin{align*}
-\text{rET} &= \beta_0 + s_1(\text{dnbr}) + s_2(\text{lat}) + s_3(\text{precip}) \\
-&\quad + te(\text{pre-fire NDVI}, \text{dNBR}) \\
-&\quad + te(\text{elevation}, \text{dNBR}) \\
-&\quad + te(\text{latitude}, \text{dNBR}) \\
-&\quad + te(\text{latitude}, \text{precipitation}) + \epsilon \\
-&\text{adjusted } R^2 = 0.695 \\
+\text{rET} &= \beta_0 + s_1(\text{dnbr}) + s(\text{pre-fire NDVI}, \text{dNBR}) \\
+&\quad + s(\text{soil moisture}, \text{dNBR})  + \epsilon\\
+&\text{adjusted } R^2 = 0.639 \\
 \end{align*}
 <!-- \end{minipage} -->
 <!-- \hfill -->
@@ -228,11 +234,11 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 
 # GAM reduced model performance
 \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/bam_rET_interaction_reduced_resids.png}
-- Apparent patterns are bad
+- Apparent patterns in residuals suggest the model isn't catching all patterns in the data
 
 # GAM reduced model performance
 \includegraphics[width=\linewidth]{/Users/Carrie/Desktop/creekfire/Figures/bam_rET_interaction_reduced_fitted_response.png}
-- At least that's OK
+- Want fitted values to mirror response - good
 
 # Visualizing the reduced GAM's performance
 <!-- \begin{minipage}{0.75\linewidth} -->
@@ -293,15 +299,18 @@ rET &= \frac{aET}{ET_{\text{burned,prefire}}} \times 100 \%
 
 - Alternative models
 
-  -+ Random forests - flexibility
+  -+ Random forests
   
   -+ Principle component analysis
+  
+  -+ Generalized additive mixed models
 
 - More OpenET applications!
 
   -+ Other fires - more training needed
 
   -+ Other disturbances - bark beetles
+  **add a graphic of the inyo mountain outbreak**
 
 <!-- -- Other predictors -->
 
