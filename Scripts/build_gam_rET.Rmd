@@ -45,7 +45,7 @@ df <- vroom::vroom("model_df_outliers_removed.csv")
 predictors <- c("lat","lon","prefire_ndvi","dndvi","dnbr","temp","precip",
                 "elev","aspect","slope","north","soil_moisture")
 
-base_formula <- as.formula(paste("rET ~", paste(predictors, collapse = " + ")))
+bam_rET_formula <- as.formula(paste("rET ~", paste("s(", predictors, ")", collapse = " + ")))
 ```
 
 ```{r}
@@ -53,15 +53,22 @@ base_formula <- as.formula(paste("rET ~", paste(predictors, collapse = " + ")))
 # first use all predictors, no interaction terms
 
 # Fit the model using bam
-bam_rET <- mgcv::bam(rET ~ s(prefire_ndvi) + s(dnbr) +
-                       s(elev) + s(slope) + 
-                       s(aspect) + s(north) +
-                       s(lat) + s(temp) +
-                       s(precip),
-                     data = df, method = "fREML")
+bam_rET <- mgcv::bam(bam_rET_formula,
+                     data = df, method = "REML")
 
 bam_rET.summary <- summary(bam_rET)
-bam_rET.summary
+
+# print results
+print(bam_rET.summary)
+
+# look at smooths
+plot(bam_rET)
+
+# look at diagnostic plots
+gam.check(bam_rET)
+
+# make AIC comparison
+AIC(bam_rET)
 
 # check model diagnostics
 save(bam_rET, file = paste0(outDir, "/bam_rET.RData"))
@@ -69,25 +76,93 @@ save(bam_rET, file = paste0(outDir, "/bam_rET.RData"))
 
 
 ```{r}
-# try increasing the basis dimensions
-# first use all predictors, no interaction terms
+# try a simplified model on: dnbr + dnbr:prefire_ndvi + temp:elev
+bam_rET_interaction_reduced_formula <- rET ~ s(dnbr) + te(dnbr, prefire_ndvi) +
+  te(temp, elev)
 
-# fit the model using bam and variables of interest from lm
-bam_rET_interaction_reduced <- mgcv::bam(rET ~ s(dnbr) + s(lat) + s(precip) + 
-                                   te(prefire_ndvi,dnbr, bs="ps") + te(elev,dnbr, bs="ps") + 
-                                   te(lat,dnbr, bs="ps") + te(lat,precip, bs="ps"),
-                     data = df, method = "fREML")
+# Fit the model using bam
+bam_rET_interaction_reduced <- mgcv::bam(bam_rET_interaction_reduced_formula,
+                     data = df, method = "REML")
 
 bam_rET_interaction_reduced.summary <- summary(bam_rET_interaction_reduced)
-bam_rET_interaction_reduced.summary
+
+# print results
+print(bam_rET_interaction_reduced.summary)
+
+# look at smooths
+plot(bam_rET_interaction_reduced)
+
+# look at diagnostic plots
+gam.check(bam_rET_interaction_reduced)
+
+# make AIC comparison
+AIC(bam_rET_interaction_reduced)
 
 # check model diagnostics
-gam.check(bam_rET_interaction_reduced) 
-
-save(bam_rET_interaction_reduced, file=paste0(outDir,"/bam_rET_interaction_reduced.rds"))
+save(bam_rET_interaction_reduced, file = paste0(outDir, "/bam_rET_interaction_reduced.RData"))
 ```
 
 
+
+```{r}
+# more vars, add interactions
+bam_rET_interaction_reduced2_formula <- rET ~ s(lat) + s(lon) + 
+  s(prefire_ndvi) + s(dnbr) + s(soil_moisture) +
+  s(temp) + s(precip) + s(elev) + s(north) + te(dnbr, prefire_ndvi) + te(temp, elev)
+
+# Fit the model using bam
+bam_rET_interaction_reduced2 <- mgcv::bam(bam_rET_interaction_reduced2_formula,
+                     data = df, method = "REML")
+
+bam_rET_interaction_reduced2_formula.summary <- summary(bam_rET_interaction_reduced2)
+
+# print results
+print(bam_rET_interaction_reduced2_formula.summary)
+
+# look at smooths
+plot(bam_rET_interaction_reduced2)
+
+
+```
+
+```{r}
+# look at diagnostic plots
+gam.check(bam_rET_interaction_reduced2)
+
+# make AIC comparison
+AIC(bam_rET_interaction_reduced2)
+
+# check model diagnostics
+save(bam_rET_interaction_reduced2, file = paste0(outDir, "/bam_rET_interaction_reduced2.RData"))
+```
+
+
+```{r}
+# try a simplified model
+bam_rET_interaction_reduced_formula <- rET ~ s(dnbr) + te(dnbr, soil_moisture) +
+  te(dnbr, prefire_ndvi)
+
+# Fit the model using bam
+bam_rET_interaction_reduced <- mgcv::bam(bam_rET_interaction_reduced_formula,
+                     data = df, method = "REML")
+
+bam_rET_interaction_reduced.summary <- summary(bam_rET_interaction_reduced)
+
+# print results
+print(bam_rET_interaction_reduced.summary)
+
+# look at smooths
+plot(bam_rET_interaction_reduced)
+
+# look at diagnostic plots
+gam.check(bam_rET_interaction_reduced)
+
+# make AIC comparison
+AIC(bam_rET_interaction_reduced)
+
+# check model diagnostics
+save(bam_rET_interaction_reduced, file = paste0(outDir, "/bam_rET_interaction_reduced.RData"))
+```
 
 
 ```{r}

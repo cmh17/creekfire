@@ -144,24 +144,24 @@ north_resampled <- terra::resample(north,prefire_et)
 
 Trim everything to the buffer extent.
 ```{r}
-prefire_et_cropped <- terra::crop(prefire_et,boundary_vec,mask=TRUE)
-postfire_et_resampled_cropped <- terra::crop(postfire_et_resampled,boundary_vec,mask=TRUE)
-
-elevation_resampled_cropped <- terra::crop(elevation_resampled,boundary_vec,mask=TRUE)
-temperature_resampled_cropped <- terra::crop(temperature_resampled,boundary_vec,mask=TRUE)
-precipitation_resampled_cropped <- terra::crop(precipitation_resampled,boundary_vec,mask=TRUE)
-soil_moisture_resampled_cropped <- terra::crop(soil_moisture_resampled,boundary_vec,mask=TRUE)
-prefire_ndvi_resampled_cropped <- terra::crop(prefire_ndvi_resampled,boundary_vec,mask=TRUE)
-prefire_nbr_resampled_cropped <- terra::crop(prefire_nbr_resampled,boundary_vec,mask=TRUE)
-dndvi_resampled_cropped <- terra::crop(dndvi_resampled,boundary_vec,mask=TRUE)
-dnbr_resampled_cropped <- terra::crop(dnbr_resampled,boundary_vec,mask=TRUE)
-rdnbr_resampled_cropped <- terra::crop(rdnbr_resampled,boundary_vec,mask=TRUE)
-slope_resampled_cropped <- terra::crop(slope_resampled,boundary_vec,mask=TRUE)
-aspect_resampled_cropped <- terra::crop(aspect_resampled,boundary_vec,mask=TRUE)
-north_resampled_cropped <- terra::crop(north_resampled,boundary_vec,mask=TRUE)
-rasterized_boundary_cropped <- terra::crop(rasterized_boundary,boundary_vec,mask=TRUE)
-rasterized_buffer_cropped <- terra::crop(rasterized_buffer,boundary_vec,mask=TRUE)
-rasterized_HUC12_cropped <- terra::crop(rasterized_HUC12,boundary_vec,mask=TRUE)
+# prefire_et_cropped <- terra::crop(prefire_et,boundary_vec,mask=TRUE)
+# postfire_et_resampled_cropped <- terra::crop(postfire_et_resampled,boundary_vec,mask=TRUE)
+# 
+# elevation_resampled_cropped <- terra::crop(elevation_resampled,boundary_vec,mask=TRUE)
+# temperature_resampled_cropped <- terra::crop(temperature_resampled,boundary_vec,mask=TRUE)
+# precipitation_resampled_cropped <- terra::crop(precipitation_resampled,boundary_vec,mask=TRUE)
+# soil_moisture_resampled_cropped <- terra::crop(soil_moisture_resampled,boundary_vec,mask=TRUE)
+# prefire_ndvi_resampled_cropped <- terra::crop(prefire_ndvi_resampled,boundary_vec,mask=TRUE)
+# prefire_nbr_resampled_cropped <- terra::crop(prefire_nbr_resampled,boundary_vec,mask=TRUE)
+# dndvi_resampled_cropped <- terra::crop(dndvi_resampled,boundary_vec,mask=TRUE)
+# dnbr_resampled_cropped <- terra::crop(dnbr_resampled,boundary_vec,mask=TRUE)
+# rdnbr_resampled_cropped <- terra::crop(rdnbr_resampled,boundary_vec,mask=TRUE)
+# slope_resampled_cropped <- terra::crop(slope_resampled,boundary_vec,mask=TRUE)
+# aspect_resampled_cropped <- terra::crop(aspect_resampled,boundary_vec,mask=TRUE)
+# north_resampled_cropped <- terra::crop(north_resampled,boundary_vec,mask=TRUE)
+# rasterized_boundary_cropped <- terra::crop(rasterized_boundary,boundary_vec,mask=TRUE)
+# rasterized_buffer_cropped <- terra::crop(rasterized_buffer,boundary_vec,mask=TRUE)
+# rasterized_HUC12_cropped <- terra::crop(rasterized_HUC12,boundary_vec,mask=TRUE)
 
 ```
 
@@ -213,25 +213,30 @@ data_table <- data.table(
   soil_moisture = soil_moisture_values[, "soil_moisture"] 
 )
 
-# remove rows without HUC12 since those aren't in the area of interest
+# remove rows outside the buffer
 data_table_cleaned <- data_table[!is.na(data_table$within_buffer)]
 
 # everything remaining is inside the buffer
 # so if it still has within_boundary is.na, then it must be in the buffer
-# but outside the creekfire burn area
+# but outside the burn area
 data_table_cleaned[is.na(data_table_cleaned$within_burn_area)]$within_burn_area <- FALSE
-
-# get rid of remaining rows with missing values
-data_table_cleaned <- na.omit(data_table_cleaned)
 
 # save results
 write.csv(data_table_cleaned, paste0(wd,"/Data/big_table.csv"), row.names = FALSE)
 
-hist(data_table_cleaned[data_table_cleaned$within_burn_area == FALSE]$dnbr)
-hist(data_table_cleaned[data_table_cleaned$within_burn_area == TRUE]$dnbr)
+# check point spatial distribution
+set.seed(0)  # For reproducibility
+sample_size <- 1000  # Number of random points to sample
 
-hist(data_table_cleaned[data_table_cleaned$within_burn_area == FALSE]$prefire_nbr)
-hist(data_table_cleaned[data_table_cleaned$within_burn_area == TRUE]$prefire_nbr)
+subset_df <- data_table_cleaned %>%
+  sample_n(sample_size)
+plot(creekfire_geojson)
+# Plot the selected points using ggplot2
+ggplot(subset_df, aes(x = lon, y = lat)) +
+  geom_point(alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "Random Subset of Longitude and Latitude Points",
+       x = "Longitude", y = "Latitude")
 ```
 
 
