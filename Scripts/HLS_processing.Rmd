@@ -1,17 +1,7 @@
 ---
 title: "HLS Aquisition and Processing"
 output:
-  html_document:
-    df_print: paged
-    fig_caption: yes
-    theme: paper
-    toc: yes
-    toc_depth: 2
-    toc_float: yes
   pdf_document:
-    toc: yes
-    toc_depth: '2'
-  word_document:
     toc: yes
     toc_depth: '2'
 theme: lumen
@@ -84,7 +74,7 @@ get_search <- function(date_range,boundary_str) {
 }
 ```
 
-Set gdal configurations (I don't know what this stuff is).
+Set gdal configurations (might not need to do this since rgdal is defunct?).
 
 ```{r, results= "hide"}
 setGDALconfig("GDAL_HTTP_UNSAFESSL", value = "YES")
@@ -156,93 +146,26 @@ cat('The netrc file can be found in:', Sys.getenv('HOME'))
 Create a function to switch the boundary's crs to the crs found in the data.
 
 ```{r, warning=FALSE}
-update_crs <- function(search_df,boundary_vec) {
+update_crs <- function(search_df,boundary_vect) {
   # extract data's crs
   coordinate_reference <- terra::rast(paste0(search_df$Asset_Link[1]))
   
   # update boundary's crs
-  boundary_updated <- terra::project(boundary_vec, crs(coordinate_reference)) # Transfer CRS
+  boundary_updated <- terra::project(boundary_vect, crs(coordinate_reference)) # Transfer CRS
   # crs(creekfire_geojson_utm)
   return(boundary_updated)
 }
 ```
 
-Create a function to load the rasters from the datatable retrieved.
+Create a function to load the rasters from the data table retrieved.
 
 ```{r, warning=FALSE, results= "hide"}
-# load_rasters <- function(search_df) {
-#   
-#   # initialize stacks
-#   red_stack <- nir_stack <- fmask_stack <- swir2_stack <- list()
-#   date_vec <- c()
-#   
-#   # create progress bar
-#   pb <- txtProgressBar(min = 0, max = length(search_df$band), initial = 0, style = 3)
-#   
-#   # initialize counters for each stack
-#   l <- m <- n <- k <- 0
-#   
-#   # create function to extract date from raster source
-#   extract_date <- function(granule_id) {
-#     doy_time = strsplit(granule_id, "[.]")[[1]][4]
-#     doy = substr(doy_time, 1, 7)
-#     dat <- as.Date(as.integer(substr(doy,5,7)), origin = paste0(substr(doy,1,4), "-01-01"))
-#     return(dat)
-#   }
-#   
-#   # go through every row in the search_df
-#   for (b in 1:length(search_df$band)) {
-#     
-#       # increment the progress bar
-#       setTxtProgressBar(pb, b)
-#     
-#       # retrieve this file
-#       b_layer <- terra::rast(paste0('/vsicurl/', search_df$Asset_Link[b])) 
-#       lab <- substr(search_df$Granule_ID[b],5,5)
-#       dat <- extract_date(search_df$Granule_ID[b])
-#       
-#       # project it to WGS
-#       b_layer <- terra::project(b_layer, "EPSG:4326")
-#       
-#       # crop it to the boundary of interest
-#       b_layer_crop <- terra::crop(b_layer, terra::ext(boundary_load_rasters))
-#     
-#       # depending on what the band is, add it to the appropriate stack
-#       if (search_df$band[b] == 'B04') {
-#         l = l + 1
-#         red_stack[[l]] <- b_layer_crop
-#         
-#         # only save dates for one if statement assuming that
-#         # all the bands have data at the same time
-#         date_vec[l] <- ifelse(lab == 'S', paste0('S', as.character(dat)), paste0('L', as.character(dat)))
-#         
-#       } else if (search_df$band[b] == 'Fmask') {
-#         m = m + 1
-#         fmask_stack[[m]] <- b_layer_crop
-#         
-#       } else if (search_df$band[b] == 'B05' || search_df$band[b] == 'B8A') {
-#         n = n + 1
-#         nir_stack[[n]] <- b_layer_crop
-#         
-#       } else if (search_df$band[b] == 'B12' || search_df$band[b] == 'B07') {
-#         k = k + 1
-#         swir2_stack[[k]] <- b_layer_crop
-#       }
-# 
-#   }
-#   # close the progress bar
-#   close(pb)
-#   
-#   # return all the stacks
-#   return(list(red_stack, nir_stack, fmask_stack, swir2_stack, date_vec))
-# }
-
 
 load_rasters <- function(search_df, boundary_load_rasters) {
   
   # initialize stacks
   red_stack <- nir_stack <- fmask_stack <- swir2_stack <- list()
-  date_vec <- c()
+  date_vect <- c()
   
   # create progress bar
   pb <- txtProgressBar(min = 0, max = length(search_df$band), initial = 0, style = 3)
@@ -304,7 +227,8 @@ load_rasters <- function(search_df, boundary_load_rasters) {
       
       # only save dates for one if statement assuming that
       # all the bands have data at the same time
-      date_vec[l] <- ifelse(lab == 'S', paste0('S', as.character(dat)), paste0('L', as.character(dat)))
+      # later use this to name the layers
+      date_vect[l] <- ifelse(lab == 'S', paste0('S', as.character(dat)), paste0('L', as.character(dat)))
       
     } else if (search_df$band[b] == 'Fmask') {
       m <- m + 1
@@ -323,7 +247,7 @@ load_rasters <- function(search_df, boundary_load_rasters) {
   close(pb)
   
   # return all the stacks
-  return(list(red_stack, nir_stack, fmask_stack, swir2_stack, date_vec))
+  return(list(red_stack, nir_stack, fmask_stack, swir2_stack, date_vect))
 }
 
 ```
@@ -356,22 +280,22 @@ make_one_scene <- function(red_stack, nir_stack, fmask_stack, swir2_stack, date_
   ndvi_stack <- nbr_stack <- list()
   
   for (i in 1:length(nir_stack)){
-    # Calculate NDVI
+    # calculate NDVI
     ndvi <- calculate_NDVI(nir_stack[[i]], red_stack[[i]])
-    # Exclude non-finite values
+    # exclude non-finite values
     ndvi[!is.finite(ndvi)] <- NA
     ndvi_stack[[i]] <- ndvi
     names(ndvi_stack[[i]]) <- date_var
   
-    # Calculate NBR
+    # calculate NBR
     nbr <- calculate_NBR(nir_stack[[i]], swir2_stack[[i]])
-    # Exclude non-finite values
+    # exclude non-finite values
     nbr[!is.finite(nbr)] <- NA
     nbr_stack[[i]] <- nbr
     names(nbr_stack[[i]]) <- date_var
   }
   
-  # Tile together the ndvi, nbr, and fmask scenes
+  # tile together the NDVI, NBR, and Fmask scenes
   ndvi_scene <- mosaic(sprc(ndvi_stack))
   nbr_scene <- mosaic(sprc(nbr_stack))
   fmask_scene <- mosaic(sprc(fmask_stack))
@@ -382,49 +306,13 @@ make_one_scene <- function(red_stack, nir_stack, fmask_stack, swir2_stack, date_
 
 ```
 
-Plotting:
-```{r}
-# # Get global max and min
-# color_scale <- c(0,1) #c(min(terra::global(ndvi_scene_stack,fun="min",na.rm=TRUE)$min),max(terra::global(ndvi_scene_stack,fun="max",na.rm=TRUE)$max))
-# 
-# # Make color palette
-# pal <- colorNumeric(terrain.colors(n = 100),color_scale,na.color = "transparent", reverse = TRUE)
-# 
-# # Plot ET
-# leaflet() %>% 
-#     addProviderTiles(providers$Esri.WorldImagery) %>%
-#     addRasterImage(ndvi_scene_stack[[1]], color = pal, opacity = 1) %>%
-#     addPolygons(data = creekfire_geojson, fill = FALSE) %>%
-#     addMiniMap(zoomLevelFixed = 10) %>%
-#     leaflet::addLegend(pal = pal, values = color_scale, title = "ET")
-
-```
-
-NBR plots
-
-```{r, warning=FALSE, message=FALSE}
-# Create a color palette 
-# pal <- colorNumeric(terrain.colors(n = 100), c(0,1) ,na.color = "transparent", reverse = TRUE)
-# 
-# 
-# # Plot NBR
-# leaflet() %>% 
-#     addProviderTiles(providers$Esri.WorldImagery) %>%
-#     addRasterImage(nbr_scene_stack[[1]], color = pal, opacity = 1) %>%
-#     addPolygons(data = creekfire_geojson, fill = FALSE) %>%
-#     addMiniMap(zoomLevelFixed = 5) %>%
-#     leaflet::addLegend(pal = pal, values = c(0,1), title = "NBR")
-
-
-```
-
-
-Create a filter function using fmask. For fmask, the 7-6th bits must be 00, indicating climatology-level aerosol levels, or 01, indicating low aerosol levels. The fmask value is 255 or below, so it's sufficient to check if the values is less than 128, because if so, the 7th bit is zero. The 6th bit can be either 0 or 1, so no further checking should be needed.
+Create a filter function using fmask. For fmask, the 7-6th bits must be 00, indicating climatology-level aerosol levels, or 01, indicating low aerosol levels. The fmask value is 255 or below, so it's sufficient to check if the values is less than 128, because if so, the 7th bit is zero. The 6th bit can be either 0 or 1, so no further checking should be needed, I think...
 
 ```{r, warning=FALSE}
 filter_rasters <- function(ndvi_scene,nbr_scene,fmask_scene) 
  {
   mask_raster <- fmask_scene
+  # if it sucks, hit da bricks
   mask_raster[mask_raster >= 128] <- NA
   ndvi_filtered <- mask(ndvi_scene, mask_raster, maskvalue=NA )
   nbr_filtered <- mask(nbr_scene, mask_raster, maskvalue=NA )
@@ -434,60 +322,6 @@ filter_rasters <- function(ndvi_scene,nbr_scene,fmask_scene)
   return(list(ndvi_filtered,nbr_filtered))
   }
 
-```
-
-Visualization:
-
-```{r, warning=FALSE, message=FALSE}
-# 
-# base<-c('map<-leaflet()%>%
-#             addProviderTiles(providers$Esri.WorldImagery) %>%
-#             addMiniMap(zoomLevelFixed = 5) %>%')
-# 
-# # make a string including the addRasterImage function for every layer in the raster stack
-# 
-# X <- lapply(1:nlyr(ndvi_scene_stacked), function(j){
-#     paste(paste("addRasterImage(ndvi_scene_stacked[[",j,"]],
-#              colors = pal,
-#              opacity=1,
-#              group=names(ndvi_scene_stacked[[",j,"]]))", sep=""),"%>% \n")})
-# 
-# X <- do.call(paste, X)
-# 
-# controls<-"addLayersControl(baseGroups=names(ndvi_scene_stacked),
-#                options = layersControlOptions(collapsed=F), position = 'topleft')%>%"
-# 
-# legend <- "leaflet::addLegend(pal = pal, values = c(0,1), title = 'NDVI')"
-# 
-# final <- paste(base, X, controls, legend ,sep="\n")
-# eval(parse(text=final))
-# map
-```
-
-```{r, warning=FALSE, message=FALSE}
-# 
-# base<-c('map<-leaflet()%>%
-#             addProviderTiles(providers$Esri.WorldImagery) %>%
-#             addMiniMap(zoomLevelFixed = 5) %>%')
-# 
-# # make a string including the addRasterImage function for every layer in the raster stack
-# 
-# X <- lapply(1:nlyr(ndvi_filtered_stack), function(j){
-#     paste(paste("addRasterImage(ndvi_filtered_stack[[",j,"]],
-#              colors = pal,
-#              opacity=1,
-#              group=names(ndvi_filtered_stack[[",j,"]]))", sep=""),"%>% \n")})
-# 
-# X <- do.call(paste, X)
-# 
-# controls<-"addLayersControl(baseGroups=names(ndvi_filtered_stack),
-#                options = layersControlOptions(collapsed=F), position = 'topleft')%>%"
-# 
-# legend <- "leaflet::addLegend(pal = pal, values = c(0,1), title = 'NDVI')"
-# 
-# final <- paste(base, X, controls, legend ,sep="\n")
-# eval(parse(text=final))
-# map
 ```
 
 Create a function to export a date's NDVI, NBR, and Fmask.
@@ -503,35 +337,24 @@ export_one_layer <- function(ndvi_scene,nbr_scene,fmask_scene, outdir){
 }
 ```
 
-Create a function to do the same for stacks of data over a date range.
 
+Main: call the functions needed to search for, load, and process the HLS data to save each layer individually without filtering.
 ```{r, warning=FALSE}
-export_stacks <- function(ndvi_filtered_stack,nbr_filtered_stack, i) {
-  output_name_ndvi_stack <- paste0(outDir,"/NDVI_stack_",substr(date_ranges[i],start=1,stop=10),"_",substr(date_ranges[i],start=22,stop=31),".tif")
-  output_name_nbr_stack <- paste0(outDir,"/NDVI_stack_",substr(date_ranges[i],start=1,stop=10),"_",substr(date_ranges[i],start=22,stop=31),".tif")
-  terra::writeRaster(ndvi_filtered_stack,filename=output_name_ndvi_stack, overwrite=TRUE)
-  terra::writeRaster(nbr_filtered_stack,filename=output_name_nbr_stack, overwrite=TRUE)
-}
-```
-
-
-Call the functions needed to search for, load, and process the HLS data to save each layer individualy without filtering.
-```{r, warning=FALSE}
-# Assign search url
+# assign search url
 search_URL <- 'https://cmr.earthdata.nasa.gov/stac/LPCLOUD/search'
 
-# Assign data names
+# assign data names
 HLS_col <- list("HLSS30.v2.0", "HLSL30.v2.0")
 
-# Retrieve spatial boundary
-boundary_vec <- terra::vect("Data/CreekFire_1km_buffer.geojson")
+# retrieve spatial boundary
+boundary_vect <- terra::vect("Data/CreekFire_1km_buffer.geojson")
 
-# Get spatial extent of boundary
-roi <- terra::ext(boundary_vec) # ext gets a spatial extent
+# get spatial extent of boundary
+roi <- terra::ext(boundary_vect) # ext gets a spatial extent
 roi_bbox <- paste(roi[1], roi[3], roi[2], roi[4], sep = ',')
 prefire_et <- terra::rast("Data/openET_data/tiffs/prefire_mean_ET.tif")
 
-# Set up date ranges of interest
+# set up date ranges of interest
 
 # Prefire 2020-06-01 to 2020-08-31
 # Postfire 2021-06-01 to 2020-08-31
@@ -545,25 +368,22 @@ date_ranges <- c('2020-06-01T00:00:00Z/2020-07-01T00:00:00Z',
 # test a small subset:
 #date_ranges <- c('2020-06-01T00:00:00Z/2020-06-10T23:59:59Z')
 
-for (i in 1:1) {
+for (i in 1:length(date_ranges)) {
   print(date_ranges[i])
-  creekfire_search_req <- get_search(date_ranges[i],roi_bbox)
+  creekfire_search_req <- get_search(date_ranges[i],roi_bbox) # roi_bbox defined above
+  
   # this takes in an extent string
   search_df <- make_table(creekfire_search_req$features,i)
   
-  # Only use features without excess cloud cover
+  # only use features without excess cloud cover
   search_df <- search_df[search_df$Cloud_Cover < 30, ]
   
-  boundary_vec_utm <- update_crs(search_df,boundary_vec)
-  roi_utm <- terra::ext(boundary_vec_utm)
-  roi_bbox_utm <- paste(roi_utm[1], roi_utm[3], roi_utm[2], roi_utm[4], sep = ',') # check that this is right
-  
-  raster_output <-  load_rasters(search_df,boundary_vec)
+  raster_output <-  load_rasters(search_df,boundary_vect)
   red_stack <- raster_output[[1]]
   nir_stack <- raster_output[[2]]
   fmask_stack <- raster_output[[3]]
   swir2_stack <- raster_output[[4]]
-  date_vec <- raster_output[[5]]
+  date_vect <- raster_output[[5]]
   cat("Rasters loaded for", date_ranges[i], "\n")
   
   bands <- c("red","nir","swir2","fmask")
@@ -573,12 +393,12 @@ for (i in 1:1) {
   # merge them and save rasters covering the whole area and the individuals too
   for (k in 1:length(bands)) {
     # for each unique scene date,
-    for (d in 1:length(unique(date_vec))) {
+    for (d in 1:length(unique(date_vect))) {
       # get the date
-      scene_date <- unique(date_vec)[d]
+      scene_date <- unique(date_vect)[d]
       
       # find the indices of the rasters for the scene
-      scene_indices <- which(date_vec == scene_date)
+      scene_indices <- which(date_vect == scene_date)
       
       # subset the stack data for that scene
       scene_data <- stacks[[k]][scene_indices] 
@@ -586,10 +406,9 @@ for (i in 1:1) {
       # so scene_data is a list of rasters in one scene for one band
       
       # need to resample to match resolution for every raster in the scene
-      # just resample from first raster in the stack... pray this works
-      # I'd expect that to be helpful because then all scenes for
-      # one band should have the same resolution...
-      scene_data_resampled <- lapply(scene_data,FUN=function(x){terra::resample(x,prefire_et)}) # match res to et
+      # so I can mosaic the scene together
+      # this methodology seems somewhat questionable, ask someone about it
+      scene_data_resampled <- lapply(scene_data,FUN=function(x){terra::resample(x,prefire_et,method="near")}) # match res to et
       
       # save these all to be safe; label the pieces of the scene 1,...,h,
       for (h in 1:length(scene_data_resampled)) {
@@ -598,98 +417,17 @@ for (i in 1:1) {
                          overwrite=TRUE)
       }
       
-      # Finally, merge them together
-      # I think it would be better to mosaic, but time is a concern
-      scene_data_merged <- terra::merge(terra::sprc(scene_data_resampled))
+      # mosaic them together
+      scene_data_merged <- terra::mosaic(terra::sprc(scene_data_resampled))
       
-      # Save this file
+      # save mosaicked file
       terra::writeRaster(scene_data_merged,paste0(outDir,"/",bands[k],"/",bands[k],"_",
-                                                    scene_date,"_merged.tiff"),
+                                                    scene_date,"_mosaicked.tiff"),
                          overwrite=TRUE)
     }
   }
 }
 
 
-# Check out one of the scenes ...
-test_scene <- terra::rast(paste0(outDir,"/fmask/fmask_L2020-07-27_merged.tiff"))
 
-
-check_url <- terra::rast("https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSS30.020/HLS.S30.T11SLB.2020197T183919.v2.0/HLS.S30.T11SLB.2020197T183919.v2.0.B8A.tif")
-ggplot() +
-  geom_spatraster(data=test_scene)
-  
 ```
-
-
-```{r}
-# search_URL <- 'https://cmr.earthdata.nasa.gov/stac/LPCLOUD/search'
-# HLS_col <- list("HLSS30.v2.0", "HLSL30.v2.0")
-# boundary_vec <- terra::vect("Data/CreekFire_1km_buffer.geojson")
-# roi <- terra::ext(boundary_vec)
-# roi_bbox <- paste(roi[1], roi[3], roi[2], roi[4], sep = ',')
-# prefire_et <- terra::rast("Data/openET_data/tiffs/prefire_mean_ET.tif")
-# date_ranges <- c('2020-06-01T00:00:00Z/2020-07-01T00:00:00Z',
-#                  '2020-07-01T00:00:00Z/2020-08-01T00:00:00Z',
-#                  '2020-08-01T00:00:00Z/2020-09-01T00:00:00Z',
-#                  '2021-06-01T00:00:00Z/2021-07-01T00:00:00Z',
-#                  '2021-07-01T00:00:00Z/2021-08-01T00:00:00Z',
-#                  '2021-08-01T00:00:00Z/2021-09-01T00:00:00Z')
-# 
-# # test a small subset:
-# # date_ranges <- c('2020-06-01T00:00:00Z/2020-06-10T23:59:59Z')
-# 
-# for (i in 1:1) {
-#   print(date_ranges[i])
-#   creekfire_search_req <- get_search(date_ranges[i], roi_bbox)
-#   search_df <- make_table(creekfire_search_req$features, i)
-#   
-#   # Only use features without excess cloud cover
-#   search_df <- search_df[search_df$Cloud_Cover < 30, ]
-#   
-#   boundary_vec_utm <- update_crs(search_df, boundary_vec)
-#   roi_utm <- terra::ext(boundary_vec_utm)
-#   roi_bbox_utm <- paste(roi_utm[1], roi_utm[3], roi_utm[2], roi_utm[4], sep = ',')
-#   
-#   raster_output <- load_rasters(search_df, boundary_vec)
-#   red_stack <- raster_output[[1]]
-#   nir_stack <- raster_output[[2]]
-#   fmask_stack <- raster_output[[3]]
-#   swir2_stack <- raster_output[[4]]
-#   date_vec <- raster_output[[5]]
-#   cat("Rasters loaded for", date_ranges[i], "\n")
-#   
-#   bands <- c("red", "nir", "swir2", "fmask")
-#   stacks <- list(red_stack, nir_stack, swir2_stack, fmask_stack)
-#   
-#   for (k in 1:length(bands)) {
-#     for (j in 1:length(unique(date_vec))) {
-#       scene_date <- unique(date_vec)[j]
-#       scene_indices <- which(date_vec == scene_date)
-#       scene_data <- stacks[[k]][scene_indices]
-#       
-#       # Check if scene_data is not empty
-#       if (length(scene_data) == 0) {
-#         next
-#       }
-#       
-#       scene_data_resampled <- lapply(scene_data, FUN = function(x) {
-#         terra::resample(x, prefire_et)
-#       })
-#       
-#       for (h in 1:length(scene_data_resampled)) {
-#         terra::writeRaster(scene_data_resampled[[h]], paste0(outDir, "/", bands[k], "/", bands[k], "_", scene_date, "_", h, ".tiff"), overwrite = TRUE)
-#       }
-#       
-#       scene_data_merged <- terra::merge(terra::sprc(scene_data_resampled))
-#       terra::writeRaster(scene_data_merged, paste0(outDir, "/", bands[k], "/", bands[k], "_", scene_date, "_merged.tiff"), overwrite = TRUE)
-#     }
-#   }
-# }
-```
-
-
-
-
-
-
