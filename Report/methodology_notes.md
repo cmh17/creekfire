@@ -84,6 +84,14 @@ If you haven't done the linking step with initializing the remote "origin", it w
 
 - git push -> needed to mak the commit
 
+Good research code handbook: https://goodresearch.dev/
 
+Get it out there -> make sure it is commented and files are named clearly -> include an environment -> provide documentation -> ...
+- take an hour to add comments / delete stuff you don't need / etc
+- use a notebook and add markdown sections
 
+Where do you access SARP data? https://www-air.larc.nasa.gov/ -> have some data, but not spatial, so functionality is limited
 
+Modular code - another step
+
+Resume things - "terminal" and "linux"
