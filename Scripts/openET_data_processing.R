@@ -1,32 +1,21 @@
----
-title: "openET_data_processing.Rmd"
-output: html_notebook
-editor_options: 
-  chunk_output_type: inline
----
+# openET_data_processing.R
+# author: Caroline Hashimoto
+# version: 2024-08-17
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(comment = NA)
-knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
-```
+# setup
 
-```{r, warning = FALSE, message = FALSE}
-
-packages <- c('terra','jsonlite','sp','httr',
-              'rasterVis','ggplot2','magrittr','RColorBrewer','xml2','dygraphs',
-              'xts','lubridate','DT','rmarkdown', 'rprojroot','imager','htmltools',
-              'tidyterra')
+packages <- c("rprojroot")
 
 new.packages = packages[!(packages %in% installed.packages()[,"Package"])]
 
 if(length(new.packages)) install.packages(new.packages, repos='http://cran.rstudio.com/') else print('All required packages are installed.')
 
 invisible(lapply(packages, library, character.only = TRUE))
-```
 
-Mosaic together the OpenET data
-```{r}
+###############################################################################
+
+# mosaic together all the stacks from the boxes
+
 # create output directory if it doesn't exist
 wd <- rprojroot::find_rstudio_root_file()
 outDir <- file.path(wd, "Data", "openET_data", fsep="/")
@@ -43,7 +32,7 @@ boundary_vect <- terra::vect(paste0(wd,"/Data/creekfire_1km_buffer.geojson"))
 roi_ext <- ext(boundary_vect)
 
 # initialize stack to make mosaic
-fat_stack <- list()
+big_stack <- list()
 
 # add all the boxes' stacks to a bigger stack
 for (i in 1:length(boxes)) {
@@ -52,25 +41,22 @@ for (i in 1:length(boxes)) {
   box_stack <- terra::rast(file_path)
   
   # and add it to a list
-  fat_stack[[i]] <- box_stack
+  big_stack[[i]] <- box_stack
 }
 
 # mosaic together all the stacked pieces and label
 # note: mosaicking -> averaging; however, shouldn't really matter
 # if you do this or merge since these areas shouldn't overlap
-mosaicked <- terra::mosaic(terra::sprc(fat_stack))
+mosaicked <- terra::mosaic(terra::sprc(big_stack))
 
 # we have monthly data, so the dates should be as follows, regenerate them
+# for now, just have to hardcode this
 names(mosaicked) <- c(seq(as.Date("2020-06-01"), as.Date("2020-08-01"), "months"),
                       seq(as.Date("2021-06-01"), as.Date("2021-08-01"), "months"))
 
 # raster stack of each date's ET for whole bounding box
-writeRaster(mosaicked,paste0(outDir,"//tiffs/full_mosaic.tif"))
+writeRaster(mosaicked,paste0(outDir,"/tiffs/full_mosaic.tif"))
 
-```
-
-Calculate and save pre- and post-fire mean ET rasters.
-```{r}
 # grab prefire dates for prefire mean and postfire dates for postfire mean... simple
 prefire_mean_ET <- mean(mosaicked$`2020-06-01`,mosaicked$`2020-07-01`,mosaicked$`2020-08-01`)
 postfire_mean_ET <- mean(mosaicked$`2021-06-01`,mosaicked$`2021-07-01`,mosaicked$`2021-08-01`)
@@ -78,10 +64,4 @@ names(postfire_mean_ET) <- names(prefire_mean_ET) <- "mean_ET"
 
 writeRaster(prefire_mean_ET,paste0(outDir,"/tiffs/prefire_mean_ET.tif"))
 writeRaster(postfire_mean_ET,paste0(outDir,"/tiffs/postfire_mean_ET.tif"))
-
-# prefire_mean_ET <- terra::rast(paste0(wd,"/Data/openET_data/tiffs/prefire_mean_ET.tif"))
-# postfire_mean_ET <- terra::rast(paste0(wd,"/Data/openET_data/tiffs/postfire_mean_ET.tif"))
-
-```
-
 
