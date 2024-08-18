@@ -27,7 +27,7 @@ wd <- rprojroot::find_rstudio_root_file()
 outDir <- file.path(wd, "Data/", fsep="/")
 suppressWarnings(dir.create(outDir)) 
 
-# load prefire ET raster
+# load prefire ET raster for resampling purposes
 prefire_et <- terra::rast(paste0(outDir,"/openET_data/tiffs/prefire_mean_ET.tif"))
 ggplot() +
   geom_spatraster(data=prefire_et)
@@ -41,16 +41,16 @@ scene_dates <- as.Date(sapply(scene_files, FUN=function(x) {
   substr(strsplit(x, "_")[[1]][2], start=2, stop=11)
 }))
 
-# extract whether it's from Landsat or Sentinel
+# extract whether it's from Landsat or Sentinel-2
 scene_labels <- sapply(scene_files, FUN=function(x) {
   substr(strsplit(x, "_")[[1]][2], start=1, stop=1)
 })
 
-# Load the NIR, RED, and SWIR2 rasters
+# Load the NIR, RED, SWIR2, and Fmask rasters
 bands <- c("red", "nir", "swir2", "fmask")
 stacks <- list()
 
-# Collect all the rasters in stacks
+# collect all the rasters in stacks
 for (i in 1:length(bands)) {
   band_stack <- list()
   for (j in 1:length(scene_dates)) {
@@ -87,16 +87,17 @@ for (t in 1:length(scene_dates)) {
   }
 }
 
-# check the results - currently have a lot of bad values
-ggplot() +
-  geom_spatraster(data=ndvi_stack[[1]]) +
-  ggtitle("NDVI for first scene")
+# # check the results - currently have a lot of bad values
+# ggplot() +
+#   geom_spatraster(data=ndvi_stack[[1]]) +
+#   ggtitle("NDVI for first scene")
+# 
+# ggplot() +
+#   geom_spatraster(data=nbr_stack[[5]]) +
+#   ggtitle("NBR for fifth scene")
 
-ggplot() +
-  geom_spatraster(data=nbr_stack[[5]]) +
-  ggtitle("NBR for fifth scene")
 
-## remove suspect values
+# remove suspect values:
 
 # initialize cleaned stacks
 ndvi_stack_cleaned <- list()
@@ -120,13 +121,13 @@ for (i in 1:length(ndvi_stack)) {
 }
 
 # look at the cleaned results
-ggplot() +
-  geom_spatraster(data=ndvi_stack_cleaned[[1]]) +
-  ggtitle("Cleaned NDVI for first scene")
-
-ggplot() +
-  geom_spatraster(data=nbr_stack_cleaned[[5]]) +
-  ggtitle("Cleaned NBR for fifth scene")
+# ggplot() +
+#   geom_spatraster(data=ndvi_stack_cleaned[[1]]) +
+#   ggtitle("Cleaned NDVI for first scene")
+# 
+# ggplot() +
+#   geom_spatraster(data=nbr_stack_cleaned[[5]]) +
+#   ggtitle("Cleaned NBR for fifth scene")
 
 # define the function to apply the quality filter
 apply_quality_filter <- function(ndvi_raster, quality_raster) {
@@ -137,7 +138,7 @@ apply_quality_filter <- function(ndvi_raster, quality_raster) {
   # define the acceptable quality criteria (bits 7-6 should be 01 or 00)
   # it's an 8-bit value, so it must be under 128 in decimal
   # if you want bit 7 to be 0
-  masking_layer[!(masking_layer / 128 < 1)] <- NA
+  masking_layer[masking_layer >= 128] <- NA
   
   # mask the NDVI raster with the quality mask
   masked_ndvi <- mask(ndvi_raster, masking_layer, maskvalue=NA)
@@ -148,18 +149,20 @@ apply_quality_filter <- function(ndvi_raster, quality_raster) {
 # apply the quality filter to each NDVI raster
 filtered_ndvi_stack <- mapply(apply_quality_filter, ndvi_stack_cleaned, stacks[[4]], SIMPLIFY=FALSE)
 
-# check the results
-ggplot() +
-  geom_spatraster(data=filtered_ndvi_stack[[9]]) +
-  ggtitle("Filtered NDVI example")
+# # check the results
+# ggplot() +
+#   geom_spatraster(data=filtered_ndvi_stack[[9]]) +
+#   ggtitle("Filtered NDVI example")
 
 # average over the time periods (only using JJA for 2020 and 2021, so just split by year)
+
+# get the indices for each year
 prefire_indices <- as.vector(which(format(scene_dates, "%Y") == "2020"))
 postfire_indices <- as.vector(which(format(scene_dates, "%Y") == "2021"))
 
 # calculate the mean NDVI and NBR for the prefire period
 
-# split the stack
+# get just the prefire scenes for NDVI
 prefire_ndvi_stack <- terra::rast(ndvi_stack_cleaned[prefire_indices])
 
 # apply mean to get average summer NDVI
@@ -176,73 +179,20 @@ postfire_ndvi <- terra::app(postfire_ndvi_stack, fun=mean, na.rm=TRUE)
 postfire_nbr_stack <- terra::rast(nbr_stack_cleaned[postfire_indices])
 postfire_nbr <- terra::app(postfire_nbr_stack, fun=mean, na.rm=TRUE)
 
-# take a look at the means
-prefire_ndvi_plot <- ggplot() +
-  geom_spatraster(data=prefire_ndvi) +
-  ggtitle("Prefire NDVI mean")
-
-postfire_ndvi_plot <- ggplot() +
-  geom_spatraster(data=postfire_ndvi) +
-  geom_spatvector(data=creekfire_geojson, fill=NA, color="red") +
-  ggtitle("Postfire NDVI mean")
-
-grid.arrange(prefire_ndvi_plot, postfire_ndvi_plot, ncol=2)
-
-prefire_nbr_plot <- ggplot() +
-  geom_spatraster(data=prefire_nbr) +
-  ggtitle("Prefire NBR mean") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  scale_color_viridis_c() +
-  scale_fill_viridis_c()
-
-postfire_nbr_plot <- ggplot() +
-  geom_spatraster(data=postfire_nbr) +
-  geom_spatvector(data=creekfire_geojson, fill=NA) +
-  ggtitle("Postfire NBR mean") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  scale_color_viridis_c() +
-  scale_fill_viridis_c()
-
-
-together <- grid.arrange(prefire_nbr_plot, postfire_nbr_plot, ncol=2)
-together
-
-# Save the processed rasters
+# save the processed rasters
 terra::writeRaster(prefire_ndvi, paste0(outDir, "/prefire_mean_ndvi.tif"), overwrite=TRUE)
 terra::writeRaster(prefire_nbr, paste0(outDir, "/prefire_mean_nbr.tif"), overwrite=TRUE)
 terra::writeRaster(postfire_ndvi, paste0(outDir, "/postfire_mean_ndvi.tif"), overwrite=TRUE)
 terra::writeRaster(postfire_nbr, paste0(outDir, "/postfire_mean_nbr.tif"), overwrite=TRUE)
-
 
 # I don't love that I'm using d(mean(NDVI)) instead of mean(dNDVI)
 # but I don't have a solution for that right now
 dndvi_mean <- prefire_ndvi-postfire_ndvi
 dnbr_mean <- prefire_nbr-postfire_nbr
 
-# https://www.un-spider.org/advisory-support/recommended-practices/recommended-practice-burn-severity/in-detail/normalized-burn-ratio
-
-dndvi_mean_plot <- ggplot() +
-  geom_spatraster(data=dndvi_mean) +
-  ggtitle("Prefire NBR mean") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  scale_color_viridis_c() +
-  scale_fill_viridis_c()
-
-dnbr_mean_plot <- ggplot() +
-  geom_spatraster(data=dnbr_mean) +
-  ggtitle("Prefire NBR mean") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  scale_color_viridis_c() +
-  scale_fill_viridis_c()
-
-together <- grid.arrange(dndvi_mean_plot, dnbr_mean_plot, ncol=2)
-together
-
-
+# save the difference rasters too
 terra::writeRaster(dndvi_mean, paste0(outDir, "HLS_data/diff_mean_ndvi.tif"), overwrite=TRUE)
 terra::writeRaster(dnbr_mean, paste0(outDir, "HLS_data/diff_mean_nbr.tif"), overwrite=TRUE)
 ```
-
-
 
 

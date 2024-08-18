@@ -23,7 +23,6 @@ packages <- c('terra','jsonlite','sp','httr',
               'xts','lubridate','DT','rmarkdown', 'rprojroot','imager','htmltools',
               "raster","ggplot2","rasterVis","tmap")
 
-# Identify missing (not installed) packages
 new.packages = packages[!(packages %in% installed.packages()[,"Package"])]
 
 # Install new (not installed) packages
@@ -97,7 +96,7 @@ boundary_vect <- terra::vect("Data/CreekFire_1km_buffer.geojson")
 
 # Choose number of boxes along each edge
 x_boxes <- 3 # if using an account not connected to EE, need to have more bc
-y_boxes <-  # you can query less area per request
+y_boxes <- 3 # you can query less area per request
 
 # note: add automation later to determine number of boxes needed
 
