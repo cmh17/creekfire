@@ -16,7 +16,7 @@ output:
   + Get average monthly ET data for study area bounding box for June, July, and August 2020 and 2021
   + files: openET_data_acquisition.Rmd, openET_data_processing.Rmd
   
-- Harmonized Landsat Sentinel-2: 30 m, ~5 days?
+- Harmonized Landsat Sentinel-2: 30 m, ~5 days
   + Get all Landsat and Sentinel-2 images for the bounding box for 2020-06-01 through 2020-08-31 and 2021-06-01 through 2021-08-31
   + files: HLS_data_acquisition.Rmd, HLS_feature_engineering.Rmd
     > check methodology on combining scenes; some potential issues
