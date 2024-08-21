@@ -26,7 +26,7 @@ suppressWarnings(dir.create(outDir))
 boxes <- list.files(paste0(outDir,"/tiffs"))
 
 # get the buffer boundary so you include control points
-boundary_vect <- terra::vect(paste0(wd,"/Data/creekfire_1km_buffer.geojson"))
+boundary_vect <- terra::vect(paste0(wd,"/Data/Boundary_data/creekfire_1km_buffer.geojson"))
 
 # save the extent of the buffer, too
 roi_ext <- ext(boundary_vect)
@@ -45,7 +45,8 @@ for (i in 1:length(boxes)) {
 }
 
 # mosaic together all the stacked pieces and label
-# note: mosaicking -> averaging; however, shouldn't really matter
+# note: mosaicking is averaging; hopefully should have a more consistent
+# result than merging
 # if you do this or merge since these areas shouldn't overlap
 mosaicked <- terra::mosaic(terra::sprc(big_stack))
 

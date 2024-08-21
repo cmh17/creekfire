@@ -121,7 +121,7 @@ names(selected_boxes) <- names(box_geometries) <- 1:length(selected_boxes)
 
 # define the URL and API key
 url_text <- "https://openet-api.org/raster/geotiff/stack"
-api_key <- "EqFb7ww4pmEbwqEiFeCShw7IL7MON7CJ92SUgt1YQjaIUqtZ25g4pzUj65Rb"
+api_key <- "api key here"
 
 # define date range - use 3 month increments or so 
 date_ranges <- list(c('2020-06-01', '2020-08-31'),

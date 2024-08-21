@@ -29,7 +29,7 @@ roi <- terra::ext(boundary_vect) # ext gets a spatial extent
 prefire_et <- terra::rast(paste0(wd,"/Data/openET_data/tiffs/prefire_mean_ET.tif"))
 
 # input API key
-API_Key <- "78770cd6f4ea66a61c65096065d94f07"
+API_Key <- "api key here"
 
 # input URL text
 url_base <- "https://portal.opentopography.org/API/usgsdem"

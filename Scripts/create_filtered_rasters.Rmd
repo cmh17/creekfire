@@ -34,7 +34,7 @@ ggplot() +
 
 # get all the dates for which you have scenes
 all_files <- list.files(paste0(outDir, "/HLS_data/red/"))
-scene_files <- all_files[grepl("merged", all_files)] # don't want individual pieces
+scene_files <- all_files[grepl("mosaicked", all_files)] # don't want individual pieces
 
 # extract the scene dates
 scene_dates <- as.Date(sapply(scene_files, FUN=function(x) {
@@ -54,7 +54,7 @@ stacks <- list()
 for (i in 1:length(bands)) {
   band_stack <- list()
   for (j in 1:length(scene_dates)) {
-    raster_path <- paste0(outDir, "/HLS_data/", bands[i], "/", bands[i], "_", scene_labels[j], scene_dates[j], "_merged.tiff")
+    raster_path <- paste0(outDir, "/HLS_data/", bands[i], "/", bands[i], "_", scene_labels[j], scene_dates[j], "_mosaicked.tiff")
     band_stack[[j]] <- terra::resample(terra::rast(raster_path), prefire_et)
   }
   stacks[[bands[i]]] <- band_stack
@@ -130,6 +130,7 @@ for (i in 1:length(ndvi_stack)) {
 #   ggtitle("Cleaned NBR for fifth scene")
 
 # define the function to apply the quality filter
+
 apply_quality_filter <- function(ndvi_raster, quality_raster) {
   
   # create a mask from the quality raster
