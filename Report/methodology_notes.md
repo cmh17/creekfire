@@ -33,10 +33,12 @@ output:
   + Alternatively, look into **OpenTopography** for 1 m or 10 m resolution :000
     > https://portal.opentopography.org/apidocs/
   
-- TerraClimate: 4 km, monthly or hourly??
+- TerraClimate: 4 km, monthly
   + Get cumulative precipitation for the study area bounding box from 2020-03-01 through 2020-08-31
   + Get average soil moisture for the study area bounding box from 2020-03-01 through 2020-08-31
   + Can I get any higher resolution data on this?
+    > consider replacing precipitation with PRISM normal
+    > could use SMAP soil moisture - HydroBlocks is interesting, but not sure how to use considering 2015-2019 timeframe
   
   + Alternative data sources:
     > SMAP 1 km downscaled soil moisture?
@@ -44,56 +46,18 @@ output:
     > SMAP-HydroBlocks??????? long-term climatology dataset?
 
 - North American Land Data Assimilation System: 12 km
-  + **consider replacing this with ECOSTRESS, ASTER, or some other higher res. data source?**
-  + Or Landsat LST
-  + Or PRISM - only 4 km res, but long-term normals... maybe more meaningful than just average over a few months
+  + Really low resolution compared to other data; consider replacing with PRISM 800 m temperature normals
+    > Or something else?
   
-- Calfire boundaries for recent wildfires - select the Creek Fire from it
+- Calfire boundaries for recent wildfires - selected Creek Fire boundary from it
   + Used ArcGIS to create a 10 km buffer area around it from which to select control points
   
 - USGS HUC12 watersheds intersecting with the wildfire boundary
   + Initially planned to use this for finding control points, but changed methodology from Ma et al 2020 study
+  + Instead used control points based on similar elevation, northness, temperature, and soil moisture
+    > Probably need to do more lit review and refine this control point selection process
   
-- Additional data sources to add:
-  + biodiversity - what metrics?
+- Additional data sources to consider adding:
+  + biodiversity - what metrics
   + canopy structure / forest structure - waveform lidar
 
-# Open Science Notes
-
-- Adding a README can be confusing
-- Gists are single files, only appropriate occasionally
-
-Using Git with terminal
-
-- ll or ls -alh
-- git init -> this initializes a git repo in your folder, and after that Git tracks what happens in the folder (?)
-- git add <file> -> this "adds it to your cardboard box"
-- git status will tell you if a file has been added
-- git commit -m "add cloud lesson" commits the files and adds a message
-
-To make it show up online, need to add a remote repository
-
-- lingo that Git uses is "origin" - always means the online repo
-- git remote add origin
-- git push -u origin main (do this when you do it the first time)
-- git push -> this is fine once you do it the first time
-
-If you haven't done the linking step with initializing the remote "origin", it won't work
-
-- git log -> will tell you all the commits you've done in the past, whereas git status will tell you your files and what's changed with them
-
-- git push -> needed to mak the commit
-
-Good research code handbook: https://goodresearch.dev/
-
-Get it out there -> make sure it is commented and files are named clearly -> include an environment -> provide documentation -> ...
-- take an hour to add comments / delete stuff you don't need / etc
-- use a notebook and add markdown sections
-
-Where do you access SARP data? https://www-air.larc.nasa.gov/ -> have some data, but not spatial, so functionality is limited
-
-Modular code - another step
-
-Resume things - "terminal" and "linux"
-
-###############################################################################
