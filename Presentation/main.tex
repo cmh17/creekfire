@@ -1,0 +1,757 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\usepackage{setspace}
+% \setbeameroption{show notes on second screen=bottom}
+
+% Customize footer
+        \setbeamertemplate{caption}[numbered]
+      \setbeamertemplate{navigation symbols}{}
+      \setbeamertemplate{footline}{
+        \leavevmode%
+        \hbox{%
+          \begin{beamercolorbox}[wd=.85\paperwidth,ht=2.25ex,dp=1ex,leftskip=.3cm]{author in head/foot}%
+            \usebeamerfont{author in head/foot}Hashimoto
+          \end{beamercolorbox}%
+          \begin{beamercolorbox}[wd=.15\paperwidth,ht=2.25ex,dp=1ex,center]{author in head/foot}%
+            \usebeamerfont{author in head/foot}\insertframenumber{} / \inserttotalframenumber
+          \end{beamercolorbox}}%
+        \vskip0pt%
+      }
+      \setbeamertemplate{note page}[plain]
+      % \setbeamertemplate{frametitle}{%
+      %       \vspace{0.5em} % Adjust this value to reduce/increase spacing
+      %       \insertframetitle
+      %       \vspace{-0.8em} % Adjust this value to reduce/increase spacing
+      %   }
+%
+% Choose how your presentation looks.
+%
+% For more themes, color themes and font themes, see:
+% http://deic.uab.es/~iblanes/beamer_gallery/index_by_theme.html
+%
+\mode<presentation>
+{
+  \usetheme{default}      % or try Darmstadt, Madrid, Warsaw, ...
+  \usecolortheme{default} % or try albatross, beaver, crane, ...
+  \usefonttheme{default}  % or try serif, structurebold, ...
+  \setbeamertemplate{navigation symbols}{}
+  \setbeamertemplate{caption}[numbered]
+} 
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+
+\title[Creek Fire rET]{Describing Evapotranspiration Reduction Following the 2020 Creek Fire in the Southern Sierra Nevada}
+\author{Carrie Hashimoto}
+\institute{Rice University}
+\date{August 5, 2024\\[2em]
+{\footnotesize Thank you to Dom Ciruzzi and Marley Majetic for mentorship}\\[2em]
+{\footnotesize Special thanks to NASA Early Career Research, Jack Kaye, and Barry Lefer}
+}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}{Why does evapotranspiration matter?}
+  \begin{minipage}{0.48\linewidth}
+  \begin{itemize}
+    \textbf{Water resource management in the face of eco-hydrological disturbance}
+\vspace{1em}
+\end{itemize}
+    \begin{equation*}
+      \textcolor{structure}{Q = P - ET - \Delta S}
+    \end{equation*}
+    \begin{itemize}
+      \item[$Q$] Runoff
+      \item[$P$] Precipitation
+      \item[$ET$] Evapotranspiration
+      \item[$\Delta S$] Change in storage
+    \end{itemize}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{0.48\linewidth}
+    \begin{figure}[h]
+      \centering
+      \includegraphics[width=\linewidth]{simple_prefire_et_plot.png}
+      \caption{The pre-fire ET in the Creek Fire study area.}
+      \label{fig:prefire_et_plot}
+    \end{figure}
+  \end{minipage}
+  
+      \note<1>{
+    - We think a lot about precipitation and runoff and how it's a problem when there is extreme rain, drought, or flooding
+    
+    - We worry about drought and groundwater depletion, which is a change in storage
+    
+    - We don't think about how evapotranspiration plays a role in the balance
+    
+    - For example, during drought evapotranspiration tends to increase, which compounds the water scarcity effect
+    
+    - Evapotranspiration plays a considerable role in the water balance, which is relevant to water availability for humans in addition to ecosystem health, and we also tend to have more uncertainty in measuring it than precipitation or runoff, which can be measured with gages
+
+    - This is the evapotranspiration in the study area, measured in mean monthy millimeters evaporated and transpired, similar to the way that rainfall intensity is measured in depth over time
+    }
+\end{frame}
+
+\begin{frame}{Wildfires and evapotranspiration}
+  \begin{minipage}{0.48\linewidth}
+    \textbf{Wildfire disturbances change the water balance}
+    \vspace{2em} \\
+    \textbf{The Creek Fire, 2020}
+    \begin{itemize}
+      \item Southern Sierra Nevada
+      \item September 4, 2020 through December 24, 2020
+      \item 380,000 acres burned
+    \end{itemize}
+    \vspace{1em}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{0.48\linewidth}
+    \begin{figure}[h]
+      \centering
+      \includegraphics[width=0.8\linewidth]{ca_2020_wildfires_plot.png}
+      \caption{The 2020 wildfire season set record burn areas. (CalFire, 2024)}
+      \label{fig:ca_2020_wildfires_plot}
+    \end{figure}
+  \end{minipage}
+
+  \note<1>{
+  - Wildfires are an increasingly relevant forest disturbance
+
+  - They change the water balance and affect evapotranspiration, runoff, and storage
+
+  - Post-wildfire, runoff often increases and infiltration decreases because of reduced soil health; transpiration can decrease because damaged plant material is less capable of it, while reduced reflectance could actually increase surface temperature and evaporation - depends on many factors
+
+  - Important to understand wildfires' effects because they're burning more area because of climate change, which lengthens the fire season by melting snowpack earlier and making the dry season longer and hotter
+
+  - Forest management from the 20th century also led to a build-up of dead fuel and high tree density, making Western forest more susceptible to severe fires
+  }
+\end{frame}
+
+
+\begin{frame}{OpenET: High resolution modeled evapotranspiration}
+\vspace{1em}
+    \begin{itemize}
+    \small
+        \item 30 m resolution, aggregated from 6 models
+        \item Primary inputs: Landsat, gridMET, Spatial CIMIS
+    \end{itemize}
+    \vspace{1em}
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.75\linewidth]{ex_et_ts_plot.png}
+        \small
+        \caption{Monthly evapotranspiration for a point in the Creek Fire burn area (OpenET, 2024)}
+        \label{fig:et_ts_plot}
+    \end{figure}
+
+    \note<1>{
+    - OpenET is a data source for evapotranspiration that recently became available
+    
+    - It combines 6 different ET models to create a more consistently accurate product
+    
+    - Useful because it's at 30 m resolution, which is much higher than what you could get from flux tower interpolation or balancing runoff, precipitation, and change in storage
+
+    - Main inputs in modeling are Landsat thermal and spectral data and meteorological data interpolated from weather stations like gridMET
+
+    - Currently oriented toward understanding crop productivity, but lots of potential for other hydroecological applications
+
+    - As you can see here, evapotranspiration varies seasonally, but after the 2020 wildfire, the ET during the 2021 growing season was much lower than the preceding years and began to recover in the subsequent years
+    }
+\end{frame}
+
+\begin{frame}{Other data sources}
+\begin{columns}
+\begin{column}{0.48\linewidth}
+    \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{simple_elev_plot.png}
+    \small
+    \caption{30 m-res. Shuttle Radar Topography Mission data.}
+    \label{fig:simple_elev_plot}
+    \end{figure}
+\end{column}
+
+\begin{column}{0.48\linewidth}
+    \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{simple_soil_moisture_plot.png}
+    \small
+    \caption{4 km-res. TerraClimate soil moisture data.}
+    \label{fig:simple_precip_plot}
+    \end{figure}
+\end{column}
+\end{columns}
+    \note<1>{
+    - Elevation comes from the shuttle radar topography mission, which was an airborne radar project undertaken in 2000; also 30 m resolution, so detailed enough to derive slope and aspect from it
+
+    - Soil moisture and precipitation are from TerraClimate, which is run by Climatology Lab and provides interpolated products from ground observations
+    }
+\end{frame}
+
+\begin{frame}{Other data sources}
+\begin{columns}
+\begin{column}{0.48\linewidth}
+    \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{simple_precip_plot.png}
+    \small
+    \caption{4 km-res. TerraClimate precipitation data.}
+    \label{fig:simple_precip_plot}
+    \end{figure}
+\end{column}
+\begin{column}{0.48\linewidth}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{simple_temp_plot.png}
+    \small
+    \caption{12 km-res. North American Land Data Assimilation System temperature data.}
+    \label{fig:simple_temp_plot}
+    \end{figure}
+\end{column}
+\end{columns}
+    \note<1>{
+    - The North American Data Assimilation System interpolates temperature from ground measurements and only has 12 km resolution
+    }
+    
+\end{frame}
+
+\begin{frame}{Other data sources}
+\begin{figure}[h]
+\begin{columns}
+\begin{column}{0.48\linewidth}
+    \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{simple_ndvi_plot.png}
+    \small
+    \label{fig:simple_ndvi_plot}
+    \end{figure}
+\end{column}
+\begin{column}{0.48\linewidth}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{simple_dnbr_plot.png}
+    \small
+    \label{fig:simple_dnbr_plot}
+    \end{figure}
+\end{column}
+\end{columns}
+\caption{30 m-res. Harmonized Landsat Sentinel-2 imagery was used to calculate vegetative health indicators.}
+\end{figure}
+
+
+\end{frame}
+
+\begin{frame}{Statistical analysis of wildfire ET change}
+\begin{columns}
+  \begin{column}{0.6\textwidth}
+    \begin{spacing}{1.5} % Adjust the number to change spacing
+    \textsc{\textbf{Can statistical models use the selected environmental indicators to effectively describe the relative change in ET following the Creek Fire?}}
+    \end{spacing}
+    \begin{itemize}
+        \item multiple linear regression (MLR)
+        \item generalized additive model (GAM)
+    \end{itemize}
+  \end{column}
+  \vspace{1em}
+  \begin{column}{0.38\textwidth}
+    \begin{figure}
+      \centering
+      \includegraphics[width=\linewidth]{context_map_zoomed_in.png}
+      \small
+      \caption{Map showing the affected area of the Creek Fire (CalFire, 2024)}
+      \label{fig:context_map_zoomed_in}
+    \end{figure}
+  \end{column}
+  \end{columns}
+  \note<1>{
+    - Given that wildfires have been burning more area more severely in the past few years and they affect the water balance and thus our water resources, this project aims to understand the hydrological effects of wildfire better
+
+    - To that end, I wanted to see whether the data discussed could effectively describe the relative change in evapotranspiration using statistical models
+
+    - I used both multiple linear regression and more flexible generalized additive models to see which alternative better fits the relationships present between the variables
+    }
+    
+  
+\end{frame}
+
+
+\section{Methods}
+
+\begin{frame}{Creek fire change in ET}
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{prefire_postfire_et_plots.png}
+    \small
+    \caption{Pre-fire and post-fire evapotranspiration plots for the Creek Fire study area.}
+    \label{fig:et_change_plots}
+  \end{figure}
+
+  \note<1>{
+  - There's a severe decline in ET following the fire
+  
+  - In some areas where it had previously been between 10 and 15 cm per month, it drops to below 5 cm
+
+  - There are also noticeably different levels of change over the region, which begs for analysis of relationships with other environmental indicators
+  }
+  \end{frame}
+
+\begin{frame}{Exploratory data analysis}
+\vspace{1em}
+\textbf{What kind of patterns are present?}
+    % \begin{block}{What kind of patterns are present?}
+    % \scriptsize
+    %     Can environmental indicators like pre-fire NDVI, temperature, elevation, precipitation, northness, and soil moisture describe how ET changes in different settings?
+    %     \vspace{0.1cm}
+    % \end{block}
+    \vfill
+    \begin{columns}
+        \begin{column}{0.5\textwidth}
+            \begin{figure}[h]
+                \centering
+                \includegraphics[width=0.7\linewidth]{diff_et_vs_dndvi_elev.png}
+                \tiny
+                \caption{Difference in evapotranspiration by difference in normalized difference vegetation index and elevation.}
+                \label{fig:diff_et_vs_dndvi}
+            \end{figure}
+        \end{column}
+        \begin{column}{0.5\textwidth}
+            \begin{figure}[h]
+                \centering
+                \includegraphics[width=0.7\linewidth]{diff_et_vs_rdnbr_precip.png}
+                \tiny
+                \caption{Difference in evapotranspiration by relative difference in normalized burn ratio and precipitation.}
+                \label{fig:diff_et_vs_rdnbr}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\note<1>{
+  - To start out, look at the drop in normalized difference vegetation index and change in ET
+
+  - Also look at the drop in normalized burn ratio and the change in ET
+
+  - The larger the drop in NDVI, the larger the reduction in vegetative health, and the larger the drop in NBR, the more burn severity has increased over the study area
+
+  - So it makes sense that ET would be lower the larger the drops in NDVI and NBR
+
+  - The colors here indicate elevation and precipitation, and you can see some relationships between how steep the slope is for change in ET over the two foliage indicators
+  
+  - When elevation is higher, it looks like the same change in NDVI doesn't lead to as big a drop in ET
+
+  - Similarly, when precipitation is lower, change in NBR seems to correspond to a smaller drop in ET
+
+  - Makes sense that at higher elevations and drier locations, there's less ET to start with, so the drop might be smaller
+
+  - Based on this exploration, multiple linear regression seems like a good start
+  }
+  
+    
+\end{frame}
+
+
+% \begin{frame}{Creating the Response Variable}
+%     \begin{center}
+%     \small % Adjusts the size of the equation
+% \begin{equation*}
+%     \mathrm{rET} = \left( 
+%     \frac{ 
+%     \begin{array}{c}
+%         \left( \mathrm{ET}_{\text{burned,prefire}} - \mathrm{ET}_{\text{burned,postfire}} \right) \\
+%         - \left( \mathrm{ET}_{\text{control,prefire}} - \mathrm{ET}_{\text{control,postfire}} \right) 
+%     \end{array}
+%     }{\mathrm{ET}_{\text{control,prefire}}} 
+%     \right) \times 100 \%
+% \end{equation*}
+%     \end{center}
+%     \vspace{1em}
+%     \begin{itemize}
+%         \item Relative evapotranspiration
+%         \item Bigger rET: more change compared to control
+%         \item Control: same elevation, temperature, soil moisture, and northness bin
+%     \end{itemize}
+% \end{frame}
+
+
+\section{Results}
+
+\begin{frame}{Multiple linear regression}
+
+
+  \begin{itemize}
+    \item Response variable: relative difference in evapotranspiration (rET): 
+    \vspace{1em}
+    \[
+    \textbf{rET} = \frac{\Delta \text{ET}_{\text{burned}} - \Delta \text{ET}_{\text{control}}}{\text{ET}_{\text{burned, pre-fire}}} \times 100 \%
+    \]
+
+  \end{itemize}
+\vfill
+\begin{minipage}{\linewidth}
+  \textbf{Model Performance:}
+  \small % Reduce font size for better fit
+  \begin{itemize}
+    \item Initial MLR with 14 covariates: adjusted $R^2 = 0.576$
+    \item Accounting for interactions improves the model: adjusted $R^2 = 0.692$
+    \item A model with all interactions has $196$ coefficients...
+  \end{itemize}
+\end{minipage}
+\note<1>{
+    - I'll quickly discuss some predictors and the response variable
+
+    - The response I chose was relative difference in ET, which is the difference between the absolute change in ET in a burned point compared to a control point selected for its similarity to the burned one
+
+    - So if rET is positive, it indicates that there was a bigger drop in the burned area's ET than in the control area
+
+    - dNBR was shown in the last slide and is simply the difference in the normalized burn ratio; if it's closer to 1, then it indicates a more severe burn
+
+    - northness is one of the covariates/predictors and comes from the combination of aspect (the way a slope is facing) and slope
+
+    - the initial model contained all these variables with no interaction and no consideration to correlation in regressors, so it's not surprising that it has a somewhat mediocre adjusted R2 of 0.58
+
+    - I then created a model containing exhaustive interaction terms, and performance improved considerably; the model accounted for 69 \% of the variability within the data
+
+    - However, statistical evidence was inadequate to reject that some of the coefficients were zero; that is, some of these terms are not meaningful
+    }
+\end{frame}
+
+
+
+\begin{frame}{MLR reduced model with interactions selection}
+
+\begin{columns}[c]
+    \begin{column}{0.5\textwidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\linewidth]{lm_rET_cv_plot.png}
+            \caption{Average cross-validation error for reduced models chosen with forward selection.}
+            \label{fig:lm_rET_cv_plot}
+        \end{figure}
+    \end{column}
+
+    \begin{column}{0.5\textwidth}
+        % \vspace{0.5cm} % Add some vertical space at the top
+        Best subset selection for 3 predictors:
+        \begin{align*} 
+            \text{rET} &\sim \beta_0 + \beta_1 \cdot \text{dNBR} \\
+            &\quad + \beta_2 \cdot (\text{dNBR} \cdot \text{NDVI}) \\
+            &\quad + \beta_3 \cdot (\text{temperature} \cdot \text{elevation}) + \epsilon \\
+            &\text{adjusted } R^2 = 0.542
+        \end{align*}
+    \end{column}
+\end{columns}
+\note<1>{
+- In order to remove unnecessary terms in the interaction model, I performed forward subset selection with 10-fold cross validation
+
+- This plot shows the performance of models with different numbers of predictors when tested on 10 \% of the data that were left out of the training data
+
+- The cross-validation error was minimized with a 3-predictor model
+
+- I then performed best subset selection by exhaustively testing combinations of 3 variables and found that difference in normalized burn ratio was the best predictor in combination with the interaction between it and pre-fire NDVI and the interaction between temperature and elevation
+
+- I found this result really interesting and would like to explore how meaningful it is further and possible ecological reasoning for it
+
+- The adjusted R2 on all the data is pretty mediocre, barely above 0.5
+}
+\end{frame}
+
+
+\begin{frame}{OpenET rET compared with MLR full interaction model}
+\begin{columns}
+\begin{column}{0.48\linewidth}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.9\linewidth]{response_rET_plot.png}
+  \caption{Response variable from OpenET data.}
+  \label{fig:response_rET_plot}
+\end{figure}
+\end{column}
+\begin{column}{0.48\linewidth}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.9\linewidth]{fitted_values_lm_rET_interaction_plot.png}
+  \caption{Fitted values from full multiple linear regression model with interactions.}
+  \label{fig:fitted_values_lm_rET_interaction_plot}
+\end{figure}
+\end{column}
+\end{columns}
+\note<1>{
+- So the exhaustive model is better, and it's still relatively simple because it's just linear regression
+
+- If you look at the comparison between the response, the OpenET modeled values, vs the fitted values from the multiple linear regression with all interactions, it does a reasonable job on a regional scale
+
+- Appears not to capture all the detail at a smaller scale, though, like the 30 m resolution of the response
+
+- So maybe a more complex model would work better
+}
+\end{frame}
+
+
+% \begin{frame}{GAMs - Higher Complexity, Higher Computational Cost}
+%   \begin{align*}
+%     \text{rET} &= \beta_0 + s_1(\text{pre-fire NDVI}) + s_2(\text{dNBR}) \\
+%     &\quad + s_3(\text{elevation}) + s_4(\text{slope}) \\
+%     &\quad + s_5(\text{aspect}) + s_6(\text{northness}) \\
+%     &\quad + s_7(\text{latitude}) + s_8(\text{temperature}) \\
+%     &\quad + s_9(\text{precipitation}) + s_{10}(\text{RdNBR}) \\
+%     &\quad + s_{11}(\text{dNDVI}) + s_{12}(\text{soil moisture}) \\
+%     &\quad + s_{13}(\text{longitude}) + \epsilon, \\
+%     &\text{adjusted } R^2 = 0.737
+%   \end{align*}
+% \end{frame}
+
+\begin{frame}{GAMs - higher complexity, higher computational cost}
+
+\centering
+\begin{minipage}{0.45\linewidth}
+\begin{figure}[h]
+  \centering
+  $s(\text{dNBR})$
+  \includegraphics[width=\linewidth]{bam_rET_interaction_reduced_dnbr.png}
+  \caption{More "wiggliness" can fit more complex relationships, but smooths can also get penalized down to linear.}
+  \label{fig:bam_rET_interaction_reduced_dnbr}
+\end{figure}
+\end{minipage}
+\hspace{0.5em}
+\begin{minipage}{0.45\linewidth}
+\begin{figure}[h]
+      \centering
+      $te(\text{temperature, elevation})$
+      \includegraphics[width=\linewidth]{bam_rET_interaction_reduced_elev_temp.png}
+      \caption{For temperature and elevation interaction, generalized cross-validation fitted a more complex smooth.}
+      \label{fig:enter-label}
+  \label{fig:bam_rET_interaction_reduced_temp_elev}
+\end{figure}
+\end{minipage}
+\note<1>{
+- GAMs resemble linear models, but the response can be transformed, for example you can take its logarithm if the data has a more extreme distribution
+
+- Also, instead of having coefficients for each regressor, you have a function; in this case, I used cubic regression splines, which are smooth piecewise cubic polynomials
+
+- So instead of just maximizing likelihood, you balance the maximization of likelihood with the requirement for smoothness
+
+- Sometimes through model selection, you end up with a linear function, or sometimes you get a more complex basis function, as is the case with this interaction function for elevation and temperature
+}
+\end{frame}
+
+\begin{frame}{Reduced GAMs}
+\begin{itemize}
+    \item Initial model's adjusted $R^2 = 0.737$ is better than MLR's
+    \item Add interactions and discard redundant predictors to refine
+\end{itemize}
+\vspace{1em}
+\begin{align*}
+\text{rET} &\sim s_1 (\text{latitude}) + s_2(\text{longitude}) \\
+&\quad + s_3 (\text{NDVI}) + s_4 (\text{dNBR}) + s_5 (\text{temperature}) \\
+&\quad + s_6 (\text{precipitation}) + s_7 (\text{elevation}) \\
+&\quad + s_8 (\text{northness}) + s_9 (\text{soil moisture}) \\
+&\quad  + te_1 (\text{temperature, elevation}) \\
+&\quad + te_2 (\text{dNBR, NDVI}) + \epsilon \\
+&\text{adjusted } R^2 = 0.754 \\
+\end{align*}
+\note<1>{
+- I started with the same approach, including all regressors without interaction terms, and it performed better than any of the linear models
+
+- However, I didn't perform regression on an exhaustive list of interaction terms because GAMs have a higher computational cost
+
+- And I didn't perform variable selection through cross validation of my own because the library I used performs a type of approximate cross validation that makes the splines smoother when appropriate
+
+- So I instead tried removing regressors I knew to be highly correlated with each other and added interaction terms from the linear reduced model
+
+- The resulting model had an ever-so-slightly higher adjusted R2 than the initial GAM
+}
+\end{frame}
+
+
+
+
+% \begin{frame}{GAM reduced model performance}
+% \begin{figure}[h]
+% \centering
+% \includegraphics[width=\linewidth]{bam_rET_interaction_big_qq.png}
+%   \caption{Quantile-quantile plot suggests the residuals aren't normally distributed.}
+%   \label{fig:bam_qq}
+% \end{figure}
+
+% \end{frame}
+
+\begin{frame}{Reduced GAM performance}
+
+    \begin{figure}[h]
+        \centering
+        \begin{tikzpicture}
+            \node[anchor=south west,inner sep=0] (image) at (0,0) {
+                \includegraphics[width=0.8\linewidth]{bam_rET_interaction_reduced2_qq.png}
+            };
+            \begin{scope}[x={(image.south east)},y={(image.north west)}]
+                % Position of the second overlay text (bottom right)
+                \node[anchor=south east, xshift=-0.5cm, yshift=0.5cm, text width=0.4\textwidth, fill=white, opacity=1] at (0.95,0.2) {
+                    \footnotesize
+                    \begin{itemize}
+                        \item Residual quantiles don't follow a normal distribution
+                        \item Model may not be accounting for patterns in data
+                    \end{itemize}
+                };
+            \end{scope}
+        \end{tikzpicture}
+        \caption{Quantile-quantile plot suggests the residuals aren't normally distributed.}
+        \label{fig:bam_resids}
+    \end{figure}
+\note<1>{
+- Looking at model diagonostics, there is room for improvement
+
+- GAMs and MLRs both assume that the error, the random variation in the response, is normally distributed
+
+- So a common way to see if the model is capturing the patterns in the data is to see if the residuals look normally distributed; that is, if they look like the error should look
+
+- You can do this with a quantile-quantile plot, and you can see that there's an issue here because the residuals' quantiles don't follow the pattern they would if they were normally distributed...
+}
+\end{frame}
+
+
+\begin{frame}{Response vs MLR vs GAM}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\linewidth]{response_fitted_values_lm_rET_interaction_and_bam_rET_interaction_reduced2_plots.png}
+\caption{Comparison of observed rET and fitted values for full multiple linear regression model with interactions and reduced generalized additive model with interactions.}
+\label{fig:response_and_MLR_GAM_fitted}
+\end{figure}
+\note<1>{
+- However, all is not lost
+
+- Looking at the response again, the GAM still has similar outputs on a coarse scale, similar to the MLR
+
+- Visually, it looks as though it describes the variation better in the northern part of the burn area and worse in the southern part
+
+- These blank areas couldn't be analyzed because I couldn't find control points for the rET calcalation within 10 km of the burn area
+}
+\end{frame}
+
+\section{Conclusion}
+
+\begin{frame}{Conclusions: MLR vs GAMs for describing rET}
+
+\begin{minipage}{\linewidth}
+\begin{itemize}
+ \item Interactions are important: dNBR and temperature, elevation
+ \item Linear function describes dNBR-rET relationship well
+ \item May need more model complexity to capture patterns in data variability
+\end{itemize}
+\end{minipage}
+\vfill
+\begin{minipage}{\linewidth}
+% \includegraphics[width=\linewidth]{rET_vs_dNBR.png}
+\begin{table}[h]
+\centering
+\caption{Adjusted \( R^2 \) for LM and GAM Models}
+\label{tab:adjusted_r2}
+\renewcommand{\arraystretch}{1.1}  % Adjust row height
+\setlength{\tabcolsep}{4pt}  % Adjust column width
+\scriptsize
+\begin{tabular}{|l|c|c|c|}
+\hline
+Model & Predictors & Adjusted \( R^2 \) (LM) & Adjusted \( R^2 \) (GAM) \\
+\hline
+Full   & 14          & 0.572  & 0.737 \\ %
+\hline
+Full with interaction & 196    & 0.692 & - \\ % final values, ndvi/dnbr and temp/elev interactions
+\hline
+Reduced with interaction & 11 & 0.576   &  \bf{0.754} \\
+\hline
+Very reduced with interaction & 3 & 0.542 & 0.647 \\
+
+\hline
+\end{tabular}
+\end{table}
+\end{minipage}
+\note<1>{
+- To review, I used multiple linear regression and generalized additive models using covariates including normalized difference vegetation index, difference in normalized burn ratio, temperature, and elevation
+
+- I created simple models without interaction for both and when I added interactions, I got better results for both
+
+- I didn't create a GAM with an exhaustive list of interaction terms, so there's potential to improve the GAM further in a similar manner to the MLR
+
+- My best model had an adjusted R2 of 0.754
+}
+\end{frame}
+
+\section{Future work}
+
+\begin{frame}{Future work - other models, other disturbances}
+\begin{columns}
+    \begin{column}{0.48\textwidth}
+        \begin{itemize}
+            \item More predictors, higher resolution - forest structure
+            \item Alternative models: principal component analysis
+            \item More OpenET applications
+        \end{itemize}
+        \vspace{1em}
+    Can we apply similar models in other watersheds to \textit{predict} relative change in evapotranspiration after other wildfires?
+    \end{column}
+    \begin{column}{0.48\textwidth}
+        \begin{figure}[h]
+            \centering
+            \includegraphics[width=0.8\linewidth]{ca_2020_wildfires_plot.png}
+            \caption{OpenET could be used to analyze other recent wildfires' evapotranspiration responses.}
+            \label{fig:ca_2020_wildfire_map}
+        \end{figure}
+    \end{column}
+\end{columns}
+\note<1>{
+- I'd like to improve this analysis by using data for my predictors that are as high resolution as the ET data, since it's not possible to get 30 m res precision in the fitted values if your predictors are 12 km precision
+
+- Also, ecology is hugely complex, and there are other factors that affect ET I haven't accounted for like biodiversity and forest structure
+
+- Since there seem to be close-to-linear relationships in the data, it might be interesting to try principle component analysis
+
+- Also, since OpenET is a good resource for high resolution modeled evapotranspiration, other disturbances' effects on ET could be analyzed using it; to start with, analyze other wildfires the way that flux tower data has been used to quantify wildfire ET change extensively
+}
+\end{frame}
+
+
+\begin{frame}{Special thanks}
+    \centering
+    \large
+    
+    \begin{itemize}
+        \item \textbf{Mentorship}
+        \begin{itemize}
+            \item[] Dom Ciruzzi
+            \item[] Marley Majetic
+        \end{itemize}
+        
+        \vspace{0.5cm}
+        
+        \item \textbf{Support}
+        \begin{itemize}
+            \item[] NASA Early Career Research
+            \item[] Jack Kaye 
+            \item[] Barry Lefer
+        \end{itemize}
+
+        \vspace{0.5cm}
+
+    \item \textbf{Shoutouts}
+        \begin{itemize}
+            \item[] Riley McCue for coding mentorship
+            \item[] OpenET team for raising my request quota
+        \end{itemize}
+    \end{itemize}
+
+    \vspace{0.5em}
+    \large{
+    Your guidance and support have been invaluable to my progress on this project!
+    }
+\end{frame}
+
+\end{document}
+
+
