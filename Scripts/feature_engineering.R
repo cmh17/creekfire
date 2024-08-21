@@ -85,7 +85,7 @@ sample_size <- 1000  # Number of random points to sample
 subset_df <- final_df %>%
   sample_n(sample_size)
 
-# Plot the selected points using ggplot2
+# plot the selected points using ggplot2
 ggplot(subset_df, aes(x = lon, y = lat)) +
   geom_point(alpha = 0.5) +
   theme_minimal() +
