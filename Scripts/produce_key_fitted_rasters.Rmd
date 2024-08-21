@@ -1,0 +1,105 @@
+---
+title: "produce_key_fitted_rasters.Rmd"
+author: "Carrie Hashimoto"
+date: "2024-08-01"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(comment = NA)
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+packages <- c('tidyverse','mgcv','gam','akima','readr','data.table','vroom',
+              'foreach','doParallel','readr','caret','GGally','ggplot2',
+              'psych','magrittr','reshape2','stringr','gratia','terra',
+              'tidyterra',"cowplot")
+
+# Identify missing (not installed) packages
+new.packages <-  packages[!(packages %in% installed.packages()[,"Package"])]
+
+# Install new (not installed) packages
+if(length(new.packages)) install.packages(new.packages, repos='http://cran.rstudio.com/') else print('All required packages are installed.')
+
+invisible(lapply(packages, library, character.only = TRUE))
+```
+
+```{r}
+wd <- rprojroot::find_rstudio_root_file()
+outDir <- file.path(wd, "Figures", fsep="/")
+suppressWarnings(dir.create(outDir)) 
+
+num_cores <- detectCores() - 1
+cl <- makeCluster(num_cores - 1)  # Use one less core than available
+registerDoParallel(cl)
+```
+
+
+```{r}
+```
+
+Produce the images
+```{r}
+# goal: generate fitted values for each model
+# and turn them into rasters, display
+
+# import each model
+load("/Users/Carrie/Desktop/creekfire/Models/lm_rET_interaction.RData")
+load("/Users/Carrie/Desktop/creekfire/Models/bam_rET_interaction_reduced2.RData")
+
+```
+
+```{r}
+# check what these things are
+print(lm_rET_interaction)
+print(bam_rET_interaction_reduced2)
+
+```
+
+
+```{r}
+
+# extract fitted values
+fitted_values_lm_rET_interaction <- predict(lm_rET_interaction, type = "response")
+fitted_values_bam_rET_interaction_reduced2 <- predict(bam_rET_interaction_reduced2, type = "response")
+
+model_df <- vroom::vroom(paste0(wd,"/model_df_outliers_removed.csv"))
+
+# Create a SpatRaster object from the data frame
+coords <- data.frame(lon = model_df$lon, lat = model_df$lat)
+
+# save these in a df and csv to be safe
+fitted_values_df <- data.frame(response=model_df$rET,
+                               lm_rET_interaction=fitted_values_lm_rET_interaction,
+                               bam_rET_interaction_reduced2=fitted_values_bam_rET_interaction_reduced2)
+
+# write_csv(fitted_values_df,paste0(outDir,"/fitted_values_df.csv"))
+
+# Convert the data frame to a terra vector (SpatVector)
+points_response_rET <- terra::vect(coords, crs = "EPSG:4326")
+points_fitted_values_lm_rET_interaction <- terra::vect(coords, crs = "EPSG:4326")
+points_fitted_values_bam_rET_interaction_reduced2 <- terra::vect(coords, crs = "EPSG:4326")
+```
+
+```{r}
+values(points_response_rET) <- fitted_values_df$response
+values(points_fitted_values_lm_rET_interaction) <- fitted_values_df$lm_rET_interaction
+values(points_fitted_values_bam_rET_interaction_reduced2) <- fitted_values_df$bam_rET_interaction_reduced2
+ 
+# Rasterize the points
+raster_template <- rast(ext(points_response_rET), resolution = 0.0003, crs = "EPSG:4326")
+response_rET_rast <- rasterize(points_response_rET, raster_template, field="value")
+fitted_values_lm_rET_interaction_rast <- rasterize(points_fitted_values_lm_rET_interaction, raster_template, field="value")
+fitted_values_bam_rET_interaction_reduced2_rast <- rasterize(points_fitted_values_bam_rET_interaction_reduced2, raster_template, field="value")
+
+writeRaster(response_rET_rast,paste0(outDir,"/response_rET_rast.tif"),overwrite=TRUE)
+writeRaster(fitted_values_lm_rET_interaction_rast,paste0(outDir,"/fitted_values_lm_rET_interaction_rast.tif"),overwrite=TRUE)
+writeRaster(fitted_values_bam_rET_interaction_reduced2_rast,paste0(outDir,"/fitted_values_bam_rET_interaction_reduced2_rast.tif"),overwrite=TRUE)
+
+```
+
+
