@@ -17,8 +17,10 @@ invisible(lapply(packages, library, character.only = TRUE))
 
 # create an output directory if it doesn't exist
 wd <- rprojroot::find_rstudio_root_file()
-outDir <- file.path(wd, "Data", "R_Output", fsep="/")
+outDir <- file.path(wd, "Data", "OpenET_data", fsep="/")
 suppressWarnings(dir.create(outDir)) 
+suppressWarnings(dir.create(paste0(outDir,"/zips"))) 
+suppressWarnings(dir.create(paste0(outDir,"/tiffs"))) 
 
 httr::set_config(httr::config(ssl_verifypeer=0L))
 
@@ -59,7 +61,7 @@ make_JSON <- function(date_range = c('2020-01-01', '2020-12-31'), model = 'ensem
 # determine the number of boxes needed to get area per box under 200,000 ac
 
 # first import the boundary vector
-boundary_vect <- terra::vect("Data/CreekFire_1km_buffer.geojson")
+boundary_vect <- terra::vect("Data/Boundary_data/CreekFire_1km_buffer.geojson")
 boundary_vect_ext <- terra::ext(boundary_vect)
 bbox_polygon <- as.polygons(boundary_vect_ext, crs=crs(boundary_vect))
 
@@ -119,14 +121,17 @@ names(selected_boxes) <- names(box_geometries) <- 1:length(selected_boxes)
 
 # define the URL and API key
 url_text <- "https://openet-api.org/raster/geotiff/stack"
-api_key <- "vwbS255pccefh91eiJhT1ldMsUtnzmtDMVemeTvWQxecH978fDssfmXwfC52"
+api_key <- "EqFb7ww4pmEbwqEiFeCShw7IL7MON7CJ92SUgt1YQjaIUqtZ25g4pzUj65Rb"
 
 # define date range - use 3 month increments or so 
 date_ranges <- list(c('2020-06-01', '2020-08-31'),
                     c('2021-06-01', '2021-08-31'))
 
-
+i <- 1
+j <- 1
 for (i in 1:length(box_geometries)){
+  suppressWarnings(dir.create(paste0(outDir, "/zips/box",i))) 
+  suppressWarnings(dir.create(paste0(outDir, "/tiffs/box",i))) 
   for (j in 1:length(date_ranges)) {
     payload <- make_JSON(
       date_range = date_ranges[[j]],
@@ -153,7 +158,7 @@ for (i in 1:length(box_geometries)){
     )
     
     # print the response content and status code
-    cat("box:", names(selected_boxes)[[i]], ", date_range:", date_ranges[[j]], "status_code:",print(status_code(response), "\n", sep=""))
+    cat("box: ", names(selected_boxes)[[i]], ", date_range: ", date_ranges[[j]], ", status_code: ",print(status_code(response)), "\n", sep="")
     
     response_urls <- content(response, "parsed") # I'm not totally sure what this line does...
     
@@ -164,8 +169,8 @@ for (i in 1:length(box_geometries)){
       wd <- rprojroot::find_rstudio_root_file()
       
       # save both the zips and the tifs to be safe
-      zip_dir <- file.path(wd, "Data/openET_data/zips", paste0("box",names(selected_boxes)[[i]]), "\n", fsep="/")
-      tif_dir <- file.path(wd, "Data/openET_data/tiffs", paste0("box",names(selected_boxes)[[i]]), "\n", fsep="/")
+      zip_dir <- file.path(wd, "Data/openET_data/zips", paste0("box",names(selected_boxes)[[i]]), fsep="/")
+      tif_dir <- file.path(wd, "Data/openET_data/tiffs", paste0("box",names(selected_boxes)[[i]]), fsep="/")
       box_response_name <- paste0("box",names(selected_boxes)[[i]],"_",names(response_urls)[k])
       suppressWarnings(dir.create(zip_dir))
       

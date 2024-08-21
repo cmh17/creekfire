@@ -22,11 +22,11 @@ outDir <- file.path(wd, "Data", "DEM_data", fsep="/")
 suppressWarnings(dir.create(outDir)) 
 
 # retrieve spatial boundary
-boundary_vect <- terra::vect("Data/CreekFire_1km_buffer.geojson")
+boundary_vect <- terra::vect(paste0(wd,"/Data/Boundary_data/CreekFire_1km_buffer.geojson"))
 
 # get spatial extent of boundary
 roi <- terra::ext(boundary_vect) # ext gets a spatial extent
-prefire_et <- terra::rast("Data/openET_data/tiffs/prefire_mean_ET.tif")
+prefire_et <- terra::rast(paste0(wd,"/Data/openET_data/tiffs/prefire_mean_ET.tif"))
 
 # input API key
 API_Key <- "78770cd6f4ea66a61c65096065d94f07"
