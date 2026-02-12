@@ -1,0 +1,494 @@
+---
+title: "Creek Fire Analysis Walkthrough -- KNP Complex Data Check"
+output: html_notebook
+---
+
+```{r}
+library(here)
+library(terra)
+library(tidyterra)
+library(ggplot2)
+library(gridExtra)
+```
+
+# Check boundary
+
+```{r}
+fire_name <- "KNP Complex"
+fire_name_clean <- gsub(" ", "_", str_to_lower(fire_name))
+boundaries_folder = here("data", fire_name_clean, "boundaries")
+buffer_dist <- 10000 # km
+
+fire <- read_sf(here("data", paste0(fire_name_clean, "_fire"), "boundaries", paste0(fire_name_clean, "_fire.geojson")))
+
+fire_buffer <- read_sf(here("data", paste0(fire_name_clean, "_fire"), "boundaries", paste0(fire_name_clean, "_fire_buffer.geojson")))
+
+# Create a bounding box around the fire boundary with buffer
+fire_bbox <- get_bbox(fire_name, fire_buffer)
+
+ggplot() +
+  geom_spatvector(data = fire_bbox, fill="transparent") +
+  geom_spatvector(data = fire$geometry, col="red", fill="transparent") +
+  geom_spatvector(data = fire_buffer$geometry, col="blue", fill="transparent") +
+  labs(title=paste(fire_name, "Fire Boundary and Buffer"))
+
+```
+
+## OpenET: ensemble ET
+
+```{r}
+et_dir <- here(fire_folder_path, "openet")
+dir.create(file.path(et_dir))
+
+# Get pre- and post-fire summer months' ET
+# Find the fire start date and get the 3 years before it
+all_fires <- st_read(here("data", "california_fire_perimeters_all.geojson"))
+
+# Select the fire boundary from all fires
+# fire_data <- all_fires[all_fires$FIRE_NAME == str_to_upper(fire_name), ]
+fire_data <- all_fires[all_fires$FIRE_NAME == (fire_name), ]
+
+fire_data <- fire_data[which.max(fire_data$GIS_ACRES), ]
+
+start_date <- as.Date(fire_data$ALARM_DATE)
+et_date_ranges <- list(seq(as.Date(paste0(as.character(year(start_date)-3), "-06-01")), length.out=2, by="2 month"),
+                       seq(as.Date(paste0(as.character(year(start_date)-2), "-06-01")), length.out=2, by="2 month"),
+                       seq(as.Date(paste0(as.character(year(start_date)-1), "-06-01")), length.out=2, by="2 month"),
+                       seq(as.Date(paste0(as.character(year(start_date)+1), "-06-01")), length.out=2, by="2 month"))
+
+source(here("scripts/openet_processing.R"))
+
+# combine the tiles
+combined_tiles <- combine_tiles(et_dir, output_name="full_mosaic", write=TRUE)
+
+prefire_date_values <- as.Date(unlist(lapply(et_date_ranges[1:3], function(x) {seq(from=as.Date(x[1]), to=as.Date(x[-1]), by="1 month")})))
+
+postfire_date_values <- as.Date(unlist(lapply(et_date_ranges[4], function(x) {seq(from=as.Date(x[1]), to=as.Date(x[-1]), by="1 month")})))
+
+prefire_et <- terra::rast(here(et_dir, "tiffs", "prefire_et.tif"))
+postfire_et <- terra::rast(here(et_dir, "tiffs", "postfire_et.tif"))
+
+all_vals <- c(terra::global(prefire_et, "min", na.rm = TRUE)$min,
+              terra::global(prefire_et, "max", na.rm = TRUE)$max,
+              terra::global(postfire_et, "min", na.rm = TRUE)$min,
+              terra::global(postfire_et, "max", na.rm = TRUE)$max)
+
+et_min <- min(all_vals)
+et_max <- max(all_vals)
+
+# Prefire
+prefire_et_plot <- ggplot() +
+    geom_spatraster(data = prefire_et, aes(fill = prefire_et)) +
+    geom_spatvector(data = fire$geometry, fill = NA, color = "white") +
+    geom_spatvector(data = fire_buffer$geometry, fill = NA, color = "yellow") +
+    scale_fill_viridis_c(limits = c(et_min, et_max), name="Mean ET (mm)") +
+    labs(title = "Pre-fire mean ET") +
+    theme_minimal()
+
+# Postfire
+postfire_et_plot <- ggplot() +
+    geom_spatraster(data = postfire_et, aes(fill = postfire_et)) +
+    geom_spatvector(data = fire$geometry, fill = NA, color = "white") +
+    geom_spatvector(data = fire_buffer$geometry, fill = NA, color = "yellow") +
+    scale_fill_viridis_c(limits = c(et_min, et_max), name="Mean ET (mm)") +
+    labs(title = "Post-fire mean ET") +
+    theme_minimal()
+
+# Fixed... thank the Lord
+grid.arrange(prefire_et_plot, postfire_et_plot, ncol=2)
+```
+
+
+```{r}
+# Example for one month
+ggplot() +
+  geom_spatraster(data = combined_tiles$`2020-07-01`) +
+  geom_spatvector(data = fire$geometry, fill = NA, color="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, color="yellow") +
+    scale_fill_viridis_c(limits = c(et_min, et_max), name="Mean ET (mm)") +
+    labs(title = "7/2020 mean ET") +
+    theme_minimal()
+
+```
+
+## USGS DEM: elevation
+- Features engineered: northness, aspect, slope
+
+```{r}
+source(here("scripts/dem_acquisition.R"))
+
+et_ref_path <- here("data", paste0(fire_name_clean,"_fire"), "openet", "tiffs", "full_mosaic.tif")
+
+# Load API key
+opentopo_api_key <- Sys.getenv("OPENTOPOGRAPHY_API_KEY")
+
+dem_dir <- here("data", paste0(fire_name_clean,"_fire"), "dem")
+
+output_name <- "usgs_10m_dem"
+
+dem <- terra::rast(here(dem_dir, paste0(output_name, ".tif")))
+
+# Plot it
+ggplot() +
+  geom_spatraster(data = dem, aes(fill = usgs_10m_dem)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "USGS DEM") +
+  scale_fill_viridis_c(name="Elevation (m)") +
+  theme_minimal()
+
+```
+
+Now generate slope, aspect, and northness rasters from the elevation data.
+
+```{r}
+source(here("scripts/dem_feature_engineering.R"))
+
+dem_path <- here("data", paste0(fire_name_clean,"_fire"), "dem", "usgs_10m_dem.tif")
+slope_path <- here("data", paste0(fire_name_clean,"_fire"), "dem", "usgs_10m_slope.tif")
+aspect_path <- here("data", paste0(fire_name_clean,"_fire"), "dem", "usgs_10m_aspect.tif")
+northness_path <- here("data", paste0(fire_name_clean,"_fire"), "dem", "usgs_10m_northness.tif")
+
+dem_processed_outputs <- list(terra::rast(slope_path), terra::rast(asmpect_path), terra::rast(northness_path))
+names(dem_processed_outputs) <- c("slope","aspect","northness")
+
+# Plot the outputs
+ggplot() +
+  geom_spatraster(data = dem_processed_outputs$slope, aes(fill = slope)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Slope") +
+  scale_fill_viridis_c() +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = dem_processed_outputs$aspect, aes(fill = aspect)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Aspect") +
+  scale_fill_viridis_c() +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = dem_processed_outputs$northness, aes(fill = northness)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Northness") +
+  scale_fill_viridis_c() +
+  theme_minimal()
+```
+
+## Harmonized Landsat Sentinel-2: NIR, SWIR2, RED
+
+```{r}
+# Check some pieces and scenes
+hls_dir <- here(fire_folder_path, "hls")
+
+# Example scene
+example_piece <- terra::rast(here(hls_dir, "nir", "pieces",list.files(here(fire_folder_path, "hls", "nir", "pieces"))[10]))
+example_scene <- terra::rast(here(hls_dir, "nir",list.files(here(fire_folder_path, "hls", "nir"))[20]))
+
+ggplot() +
+  geom_spatraster(data = example_piece$NIR, aes(fill = NIR)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "NIR piece of a scene") +
+  scale_fill_viridis_c(name="reflectence") +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = example_scene$NIR, aes(fill = NIR)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "NIR full scene") +
+  scale_fill_viridis_c(name="reflectence") +
+  theme_minimal()
+```
+
+- Features engineered: NDVI, NBR, dNDVI, dNBR, dRNBR
+
+```{r}
+prefire_ndvi <- terra::rast(here(hls_dir, "mean_prefire_ndvi.tif"))
+postfire_ndvi <- terra::rast(here(hls_dir, "mean_postfire_ndvi.tif"))
+diff_ndvi <- terra::rast(here(hls_dir, "diff_mean_ndvi.tif"))
+
+prefire_nbr <- terra::rast(here(hls_dir, "mean_prefire_nbr.tif"))
+postfire_nbr <- terra::rast(here(hls_dir, "mean_postfire_nbr.tif"))
+diff_nbr <- terra::rast(here(hls_dir, "diff_mean_nbr.tif"))
+
+ggplot() +
+  geom_spatraster(data = prefire_ndvi$mean_prefire_ndvi, aes(fill = mean_prefire_ndvi)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Mean prefire NDVI") +
+  scale_fill_viridis_c(name="(-1,1)") +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = postfire_ndvi$mean_postfire_ndvi, aes(fill = mean_postfire_ndvi)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Mean postfire NDVI") +
+  scale_fill_viridis_c(name="(-1,1)") +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = diff_ndvi$dndvi_mean, aes(fill = dndvi_mean)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Diff. mean NDVI") +
+  scale_fill_viridis_c(name="(-2,2)") +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = prefire_nbr$mean_prefire_nbr, aes(fill = mean_prefire_nbr)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Mean prefire nbr") +
+  scale_fill_viridis_c(name="(-1,1)") +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = postfire_nbr$mean_postfire_nbr, aes(fill = mean_postfire_nbr)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Mean postfire nbr") +
+  scale_fill_viridis_c(name="(-1,1)") +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = diff_nbr$dnbr_mean, aes(fill = dnbr_mean)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Diff. mean nbr") +
+  scale_fill_viridis_c(name="(-2,2)") +
+  theme_minimal()
+
+```
+
+TerraClimate: monthly precipitation, monthly soil moisture
+
+- Features engineered: 6-month pre-fire precipitation and soil moisture
+- Script for downloading from https://www.climatologylab.org/uploads/2/2/1/3/22133936/terraclimate_downloadv2.r
+
+```{r}
+
+buffer_path <- here(boundaries_folder, paste0(fire_name, "_fire_buffer.geojson"))
+terraclimate_dir <- here("data", paste0(fire_name_clean,"_fire"), "terraclimate")
+
+# Take a look
+prefire_ppt <- terra::rast(here(terraclimate_dir, "prefire_ppt.tif"))
+prefire_soil <- terra::rast(here(terraclimate_dir, "prefire_soil.tif"))
+prefire_pdsi <- terra::rast(here(terraclimate_dir, "prefire_PDSI.tif"))
+prefire_vpd <- terra::rast(here(terraclimate_dir, "prefire_vpd.tif"))
+prefire_tmax <- terra::rast(here(terraclimate_dir, "prefire_tmax.tif"))
+
+ggplot() +
+  geom_spatraster(data = prefire_ppt$prefire_ppt, aes(fill = prefire_ppt)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Pre-fire 6-mo. mean precipitation") +
+  scale_fill_viridis_c(name="mm") +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = prefire_soil$prefire_soil, aes(fill = prefire_soil)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Pre-fire 6-mo. mean soil moisture") +
+  scale_fill_viridis_c(name="mm") +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = prefire_pdsi$prefire_PDSI, aes(fill = prefire_PDSI)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Pre-fire 6-mo. mean PDSI") +
+  scale_fill_viridis_c(name="(unitless)") +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = prefire_vpd$prefire_vpd, aes(fill = prefire_vpd)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Pre-fire 6-mo. mean VPD") +
+  scale_fill_viridis_c(name="kPa") +
+  theme_minimal()
+
+ggplot() +
+  geom_spatraster(data = prefire_tmax$prefire_tmax, aes(fill = prefire_tmax)) +
+  geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+  geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+  labs(title = "Pre-fire 6-mo. mean max. temp.") +
+  scale_fill_viridis_c(name="Deg. C") +
+  theme_minimal()
+```
+
+
+NLDAS: monthly temperature -- **SUPERCEDED** -- now using Terraclimate for maximum 6-moth prefire mean temperature
+- Features engineered: 6-month pre-fire temperature
+- Downloaded from https://app.climateengine.org/climateEngine (code-based data acquisition is possible, but I haven't prepared it)
+
+
+```{r}
+# tas <- terra::rast(here("data", "nldas", "nldas_prefire_tasmean.tif"))
+# 
+# ggplot() +
+#   geom_spatraster(data = tas$nldas_prefire_tasmean, aes(fill = nldas_prefire_tasmean)) +
+#   geom_spatvector(data = fire$geometry, fill = NA, col="white") +
+#   geom_spatvector(data = fire_buffer, fill = NA, col="yellow") +
+#   labs(title = "Pre-fire 6-mo. mean temperature") +
+#   scale_fill_viridis_c() +
+#   theme_minimal()
+```
+
+
+# Data Preparation
+
+Having downloaded the data and created derivative features, it's time to ensure that everything has the right extent, projection, and resolution and then put all the relevant data into a data table.
+
+```{r}
+# boundaries
+boundary <- terra::vect(here("data", "creek_fire", "boundaries", "creek_fire_boundary.geojson"))
+buffer <- terra::vect(here("data", "creek_fire", "boundaries", "creek_fire_buffer.geojson"))
+terra::expanse(boundary, unit="km")
+
+# dem
+elevation <- terra::rast(here("data", "creek_fire", "dem", "usgs_10m_dem.tif"))
+northness <- terra::rast(here("data", "creek_fire", "dem", "usgs_10m_northness.tif"))
+aspect <- terra::rast(here("data", "creek_fire", "dem", "usgs_10m_aspect.tif"))
+slope <- terra::rast(here("data", "creek_fire", "dem", "usgs_10m_slope.tif"))
+
+# hls
+dndvi <- terra::rast(here("data", "creek_fire", "hls", "diff_mean_ndvi.tif"))
+dnbr <- terra::rast(here("data", "creek_fire", "hls", "diff_mean_nbr.tif"))
+
+# openet
+prefire_et <- terra::rast(here("data", "creek_fire", "openet", "tiffs", "prefire_mean_et.tif"))
+postfire_et <- terra::rast(here("data", "creek_fire", "openet", "tiffs","postfire_mean_et.tif"))
+
+# terraclimate sm and ppt
+sm <- terra::rast(here("data", "creek_fire", "terraclimate", "prefire_soil.tif")) # in mm
+ppt <- terra::rast(here("data", "creek_fire","terraclimate", "prefire_ppt.tif"))
+pdsi <- terra::rast(here("data", "creek_fire", "terraclimate", "prefire_pdsi.tif"))
+vpd <- terra::rast(here("data", "creek_fire", "terraclimate", "prefire_vpd.tif"))
+tmax <- terra::rast(here("data", "creek_fire", "terraclimate", "prefire_tmax.tif"))
+
+```
+
+# Run scripts to create models
+
+- Make the big table
+
+```{r}
+source(here("scripts","create_table.R"))
+
+fire_folder_path <- here("data", "creek_fire")
+buffer_path <- here(fire_folder_path, "boundaries", "creek_fire_buffer.geojson")
+boundary_path <- here(fire_folder_path, "boundaries", "creek_fire.geojson")
+prefire_et_path <- here(fire_folder_path, "openet", "tiffs", "prefire_mean_et.tif")
+postfire_et_path <- here(fire_folder_path, "openet", "tiffs", "postfire_mean_et.tif")
+elevation_path <- here(fire_folder_path, "dem", "usgs_10m_dem.tif")
+slope_path <- here(fire_folder_path, "dem", "usgs_10m_slope.tif")
+aspect_path <- here(fire_folder_path, "dem", "usgs_10m_aspect.tif")
+northness_path <- here(fire_folder_path, "dem", "usgs_10m_northness.tif")
+ppt_path <- here(fire_folder_path, "terraclimate", "prefire_ppt.tif")
+soil_path <- here(fire_folder_path, "terraclimate", "prefire_soil.tif")
+tmax_path <- here(fire_folder_path, "terraclimate", "prefire_tmax.tif")
+vpd_path <- here(fire_folder_path, "terraclimate", "prefire_vpd.tif")
+pdsi_path <- here(fire_folder_path, "terraclimate", "prefire_PDSI.tif")
+prefire_ndvi_path <- here(fire_folder_path, "hls", "prefire_mean_ndvi.tif")
+prefire_nbr_path <- here(fire_folder_path, "hls", "prefire_mean_nbr.tif")
+dndvi_path <- here(fire_folder_path, "hls", "diff_mean_ndvi.tif")
+dnbr_path <- here(fire_folder_path, "hls", "diff_mean_nbr.tif")
+out_path <- here(fire_folder_path, paste0(fire_name, "_fire_big_table.csv"))
+
+make_table(buffer_path,
+           boundary_path,
+           prefire_et_path,
+           postfire_et_path,
+           elevation_path,
+           slope_path,
+           aspect_path,
+           northness_path,
+           tmax_path,
+           ppt_path,
+           soil_path,
+           vpd_path,
+           pdsi_path,
+           prefire_ndvi_path,
+           prefire_nbr_path,
+           dndvi_path,
+           dnbr_path,
+           out_path
+           )
+```
+
+
+Next, do feature engineering to match up burned and control points.
+
+- Get control points from median aET in each bucket
+
+```{r}
+source(here("scripts","feature_engineering.R"))
+
+# Feature engineering to get control points, aet, and ret
+big_table_path <- here(fire_folder_path, paste0(fire_name, "_fire_big_table.csv"))
+out_path_with_outliers <- here(fire_folder_path, paste0(fire_name, "_fire_model_df_with_outliers.csv"))
+out_path_outliers_removed <- here(fire_folder_path, paste0(fire_name, "_fire_model_df_outliers_removed.csv"))
+
+create_modeling_df(big_table_path, out_path_with_outliers, out_path_outliers_removed)
+```
+
+```{r}
+# Check the df
+df <- vroom(out_path_outliers_removed)
+
+# check point spatial distribution
+set.seed(0)  # For reproducibility
+sample_size <- 1000  # Number of random points to sample
+
+subset_df <- df %>%
+  sample_n(sample_size)
+
+# plot the selected points using ggplot2 with aET shown
+ggplot(subset_df, aes(x = lon, y = lat, color = aet)) +
+  geom_point() +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  labs(title = "Spatial Distribution of Selected Points", color = "Absolute Evapotranspiration (%)")
+
+# plot histogram of rET
+ggplot(final_df, aes(x = ret)) +
+  geom_histogram(binwidth = 10, fill = "blue", color = "black") +
+  theme_minimal() +
+  ggtitle("Distribution of rET")
+```
+
+# Train models
+
+Using AWS:
+
+- Upload the scripts and the data
+
+- Run the scripts for training the model on the Creek Fire
+
+# Visualize model results
+
+```{r}
+dem <- terra::rast(here("data", "dem", "usgs_10m_dem.tif"))
+boundary <- terra::vect(here("data", "boundaries", "creek_fire_boundary.geojson"))
+
+# Plot
+ggplot() +
+  geom_spatraster(data = dem, aes(fill = usgs_10m_dem)) +
+  geom_spatvector(data = boundary, fill = NA, color="white") +
+  scale_fill_viridis_c() +
+  theme_minimal()
+
+# Find min and max elevations within study area
+dem_clipped <- terra::crop(dem, boundary)
+min_elev <- min(dem_clipped, na.rm=TRUE)
+max_elev <- max(dem_clipped, na.rm=TRUE)
+```
+
